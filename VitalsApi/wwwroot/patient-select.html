@@ -1,0 +1,211 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find Patient — VitalsApi</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            background: #f4f6f8;
+            color: #1a1a1a;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1.5rem 1rem;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        h1 {
+            font-size: 1.3rem;
+            margin: 0 0 0.4rem;
+        }
+
+        .hint {
+            font-size: 0.85rem;
+            color: #667;
+            margin: 0 0 1.25rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #555;
+            margin: 0.75rem 0 0.3rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+
+        button.action {
+            width: 100%;
+            padding: 0.9rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            margin-top: 1rem;
+            cursor: pointer;
+            background: #0f4c81;
+            color: #fff;
+        }
+
+            button.action:active {
+                opacity: 0.85;
+            }
+
+            button.action:disabled {
+                opacity: 0.6;
+            }
+
+        .msg {
+            font-size: 0.9rem;
+            margin-top: 0.75rem;
+            padding: 0.6rem;
+            border-radius: 8px;
+        }
+
+        .msg-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .msg-info {
+            background: #eef2f5;
+            color: #334155;
+        }
+
+        .patient-summary {
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+            .patient-summary .name {
+                font-size: 1.1rem;
+                font-weight: 700;
+            }
+
+            .patient-summary .detail {
+                font-size: 0.9rem;
+                color: #555;
+                margin-top: 0.2rem;
+            }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>🏥 Find Patient</h1>
+        <p class="hint">Enter the patient's PRNO or Inpatient ID as given by the hospital system.</p>
+        <label for="idSearch">PRNO / Inpatient ID</label>
+        <input type="text" id="idSearch" placeholder="e.g. 20260952695" inputmode="numeric">
+        <button class="action" id="searchBtn">Search</button>
+        <div id="searchMsg"></div>
+
+        <div id="patientFound" class="patient-summary hidden">
+            <div class="name" id="foundName"></div>
+            <div class="detail" id="foundDetails"></div>
+            <button class="action" id="continueBtn">Continue to Vitals →</button>
+        </div>
+    </div>
+
+    <script>
+const idSearch = document.getElementById('idSearch');
+const searchBtn = document.getElementById('searchBtn');
+const searchMsg = document.getElementById('searchMsg');
+const patientFound = document.getElementById('patientFound');
+const foundName = document.getElementById('foundName');
+const foundDetails = document.getElementById('foundDetails');
+const continueBtn = document.getElementById('continueBtn');
+
+let foundPatientId = null;
+
+function showMsg(el, text, type) {
+  el.innerHTML = `<div class="msg msg-${type}">${text}</div>`;
+}
+function clearMsg(el) { el.innerHTML = ''; }
+
+searchBtn.addEventListener('click', async () => {
+  const id = idSearch.value.trim();
+  clearMsg(searchMsg);
+  patientFound.classList.add('hidden');
+
+  if (!id) {
+    showMsg(searchMsg, 'Enter a PRNO or Inpatient ID to search.', 'error');
+    return;
+  }
+
+  searchBtn.disabled = true;
+  searchBtn.textContent = 'Searching...';
+
+  try {
+    const res = await fetch(`/api/Patients/lookup/${encodeURIComponent(id)}`);
+
+    if (res.status === 200) {
+      const patient = await res.json();
+      foundPatientId = patient.ipatientId || patient.prno;
+      foundName.textContent = patient.fullName;
+
+      const admitted = patient.admittedOn
+        ? new Date(patient.admittedOn).toLocaleString()
+        : '—';
+
+      foundDetails.innerHTML = `
+        Bed ${patient.bed || '—'} · ${patient.age ?? '—'}${patient.sex || ''}<br>
+        Dept: ${patient.department || '—'} · Dr. ${patient.doctorName || '—'}<br>
+        Admitted ${admitted} · ${patient.caseType || ''}
+      `;
+      patientFound.classList.remove('hidden');
+    } else if (res.status === 404) {
+      showMsg(searchMsg, 'No patient found with that ID.', 'info');
+    } else if (res.status === 502) {
+      showMsg(searchMsg, 'Could not reach the hospital patient system. Try again shortly.', 'error');
+    } else {
+      showMsg(searchMsg, `Unexpected error (${res.status}). Try again.`, 'error');
+    }
+  } catch (err) {
+    showMsg(searchMsg, 'Could not reach the server. Check your connection.', 'error');
+  } finally {
+    searchBtn.disabled = false;
+    searchBtn.textContent = 'Search';
+  }
+});
+
+continueBtn.addEventListener('click', () => {
+  if (foundPatientId) {
+    window.location.href = `icu-dashboard.html?patientId=${encodeURIComponent(foundPatientId)}`;
+  }
+});
+
+idSearch.addEventListener('keydown', (e) => { if (e.key === 'Enter') searchBtn.click(); });
+    </script>
+
+</body>
+</html>

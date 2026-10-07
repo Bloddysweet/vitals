@@ -1,0 +1,2822 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Critical Care Vitals Dashboard — ICU Monitoring</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --i-heart: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z'/%3E%3C/svg%3E");
+            --i-drop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z'/%3E%3C/svg%3E");
+            --i-thermo: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z'/%3E%3C/svg%3E");
+            --i-activity: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12h-4l-3 9L9 3l-3 9H2'/%3E%3C/svg%3E");
+            --i-wind: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2'/%3E%3Cpath d='M9.6 4.6A2 2 0 1 1 11 8H2'/%3E%3Cpath d='M12.6 19.4A2 2 0 1 0 14 16H2'/%3E%3C/svg%3E");
+            --i-clock: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 6v6l4 2'/%3E%3C/svg%3E");
+            --i-eye: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
+            --i-gauge: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M17 12h-2l-2 5-2-10-2 5H7'/%3E%3C/svg%3E");
+            --cal-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E");
+            --chev-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+        }
+
+        :root {
+            --page-bg: #131315;
+            --bg: #F3F5F9;
+            --rail-bg: #F8F9FC;
+            --surface: #FFFFFF;
+            --surface-2: #F7F9FC;
+            --border: #E4E9F0;
+            --border-strong: #CDD5E0;
+            --text: #0F1B2D;
+            --text-2: #556173;
+            --text-muted: #8290A3;
+            --ink: #0D0E10;
+            --accent: #1B5FA8;
+            --accent-bg: #E6F0FB;
+            --accent-strong: #0F4A8A;
+            --danger: #B42323;
+            --danger-bg: #FDEEEE;
+            --danger-border: #F0B4B4;
+            --amber: #854F0B;
+            --amber-bg: #FAEEDA;
+            --radius: 12px;
+            --radius-card: 16px;
+            --blue: #2F6FDE;
+            --blue-bg: #E7EFFC;
+            --red: #E5484D;
+            --red-bg: #FDECEC;
+            --green: #1FA971;
+            --green-bg: #E2F6EC;
+            --amber-c: #D98200;
+            --amber-c-bg: #FFF1D6;
+            --violet: #7C5CE0;
+            --violet-bg: #EFEAFD;
+            --teal: #0E9AAE;
+            --teal-bg: #DDF3F6;
+            --coral: #E5603D;
+            --coral-bg: #FDEBE4;
+            --pink: #D6409F;
+            --pink-bg: #FCE8F3;
+            --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+            --sans: "Inter", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-padding-top: env(safe-area-inset-top, 0px);
+        }
+
+        body {
+            margin: 0;
+            padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        a {
+            color: inherit;
+        }
+
+        fieldset {
+            border: 0;
+            padding: 0;
+            margin: 0;
+            min-width: 0;
+        }
+
+        .sr {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+        }
+
+        /* ---------- app shell: icon rail + content ---------- */
+        .shell {
+            display: flex;
+            min-height: 100vh;
+            background: var(--bg);
+        }
+
+        .rail {
+            position: relative;
+            z-index: 30;
+            width: 64px;
+            flex: none;
+            background: var(--rail-bg);
+            border-right: 1px solid var(--border);
+            border-radius: 0;
+        }
+
+        .rail-inner {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 14px 0 16px;
+            gap: 20px;
+        }
+
+        .brand {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: var(--accent-strong);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: none;
+        }
+
+        .content {
+            flex: 1;
+            min-width: 0;
+            padding: 14px 18px 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* rail tabs (same .tab elements + data-panel used by the tab logic) */
+        .tabbar {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .tab {
+            position: relative;
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--tc, var(--text-2));
+            cursor: pointer;
+            user-select: none;
+            transition: background .15s, color .15s;
+        }
+
+            .tab:hover {
+                background: var(--tb, #EDF1F6);
+            }
+
+            .tab:not(.active) svg {
+                opacity: .8;
+            }
+
+            .tab.active {
+                color: var(--tc, var(--accent));
+                background: var(--tb, var(--accent-bg));
+            }
+
+                .tab.active::before {
+                    content: '';
+                    position: absolute;
+                    left: -11px;
+                    top: 8px;
+                    bottom: 8px;
+                    width: 4px;
+                    border-radius: 0 4px 4px 0;
+                    background: var(--tc, var(--accent));
+                }
+
+            .tab:focus-visible {
+                outline: 2px solid var(--accent);
+                outline-offset: 2px;
+            }
+
+            .tab[data-panel="vitals"] {
+                --tc: var(--blue);
+                --tb: var(--blue-bg);
+            }
+
+            .tab[data-panel="fluid"] {
+                --tc: var(--teal);
+                --tb: var(--teal-bg);
+            }
+
+            .tab[data-panel="vent"] {
+                --tc: var(--green);
+                --tb: var(--green-bg);
+            }
+
+            .tab[data-panel="gcs"] {
+                --tc: var(--violet);
+                --tb: var(--violet-bg);
+            }
+
+            .tab[data-panel="drugs"] {
+                --tc: var(--amber-c);
+                --tb: var(--amber-c-bg);
+            }
+
+            .tab[data-panel="labs"] {
+                --tc: var(--pink);
+                --tb: var(--pink-bg);
+            }
+
+            .tab[data-panel="orders"] {
+                --tc: var(--coral);
+                --tb: var(--coral-bg);
+            }
+
+        .rail-actions {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .rail-btn {
+            position: relative;
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            border: 0;
+            background: transparent;
+            color: var(--text-2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 0;
+            transition: background .15s, color .15s;
+        }
+
+            .rail-btn:hover {
+                background: #EDF1F6;
+                color: var(--text);
+            }
+
+            .rail-btn:focus-visible {
+                outline: 2px solid var(--accent);
+                outline-offset: 2px;
+            }
+
+            .tab[data-tip]::after, .rail-btn[data-tip]::after {
+                content: attr(data-tip);
+                position: absolute;
+                left: calc(100% + 14px);
+                top: 50%;
+                transform: translateY(-50%);
+                background: var(--ink);
+                color: #fff;
+                font-size: 12px;
+                font-weight: 600;
+                padding: 6px 10px;
+                border-radius: 8px;
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity .12s;
+                z-index: 40;
+            }
+
+            .tab:hover::after, .tab:focus-visible::after, .rail-btn:hover::after, .rail-btn:focus-visible::after {
+                opacity: 1;
+            }
+
+        /* ---------- patient header card ---------- */
+        .topbar {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px 14px;
+            position: sticky;
+            top: 10px;
+            z-index: 10;
+            box-shadow: 0 8px 24px rgba(15,27,45,0.05);
+        }
+
+        .avatar {
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
+            background: var(--accent-bg);
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 600;
+            flex: none;
+        }
+
+        .patient-id {
+            flex: 1 1 360px;
+            min-width: 0;
+        }
+
+            .patient-id h1 {
+                font-size: 19px;
+                line-height: 1.25;
+                font-weight: 600;
+                letter-spacing: -0.01em;
+                margin: 0 0 2px;
+            }
+
+            .patient-id .sub {
+                color: var(--text-2);
+                font-size: 12.5px;
+            }
+
+                .patient-id .sub span {
+                    margin-right: 0;
+                    white-space: nowrap;
+                }
+
+                    .patient-id .sub span:empty {
+                        display: none;
+                    }
+
+                    .patient-id .sub span + span::before {
+                        content: '·';
+                        margin: 0 8px;
+                        color: var(--text-muted);
+                    }
+
+                .patient-id .sub a {
+                    color: var(--accent);
+                    text-decoration: none;
+                    font-weight: 500;
+                }
+
+        .topbar-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-left: auto;
+        }
+
+        .topbar .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 12px;
+        }
+
+        #dateSelect {
+            -webkit-appearance: none;
+            appearance: none;
+            background: var(--cal-icon) no-repeat 12px 50% / 16px, var(--chev-icon) no-repeat right 10px center / 13px, var(--ink);
+            color: #fff;
+            border: 1px solid var(--ink);
+            font-weight: 600;
+            font-size: 13px;
+            padding: 8px 30px 8px 36px;
+            border-radius: 12px;
+            max-width: 300px;
+            text-overflow: ellipsis;
+        }
+
+            #dateSelect option {
+                background: #fff;
+                color: var(--text);
+            }
+
+        @media (max-width:768px) {
+            .topbar {
+                padding: 14px 16px;
+                position: static;
+            }
+
+            .topbar-right {
+                width: 100%;
+            }
+
+            #dateSelect {
+                flex: 1 1 100%;
+                max-width: none;
+            }
+
+            .topbar .btn {
+                flex: 1 1 auto;
+                justify-content: center;
+            }
+        }
+
+        /* ---------- controls ---------- */
+        select, input, .btn, .modal-btn {
+            font-family: var(--sans);
+            font-size: 13px;
+            padding: 7px 12px;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius);
+            background: var(--surface);
+            color: var(--text);
+        }
+
+            select:focus, input:focus, .btn:focus, .modal-btn:focus {
+                outline: 2px solid var(--accent);
+                outline-offset: 2px;
+            }
+
+        select, .btn, .modal-btn {
+            cursor: pointer;
+        }
+
+        input[type=checkbox] {
+            accent-color: var(--accent);
+            width: 16px;
+            height: 16px;
+            padding: 0;
+        }
+
+        .btn:disabled, .modal-btn:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+        }
+
+        .btn.primary, .modal-btn.primary {
+            background: var(--ink);
+            color: #fff;
+            border-color: var(--ink);
+            font-weight: 600;
+        }
+
+            .btn.primary:hover, .modal-btn.primary:hover {
+                background: #26292F;
+            }
+
+        .btn.ghost {
+            background: transparent;
+        }
+
+            .btn.ghost:hover {
+                background: var(--surface-2);
+            }
+
+        .btn.small {
+            padding: 5px 12px;
+            font-size: 12px;
+            border-radius: 10px;
+        }
+
+        .btn.danger-text {
+            color: var(--danger);
+            border-color: transparent;
+        }
+
+            .btn.danger-text:hover {
+                background: var(--danger-bg);
+            }
+
+        .modal-btn.secondary {
+            background: var(--surface-2);
+            border-color: var(--border-strong);
+        }
+
+            .modal-btn.secondary:hover {
+                background: var(--surface);
+            }
+
+        .btn svg {
+            flex: none;
+        }
+
+        .badge {
+            font-size: 12.5px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+            .badge.ok {
+                background: #EEF1F6;
+                color: var(--text-2);
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+                .badge.ok::before {
+                    content: '';
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+                    background: #1FA971;
+                }
+
+            .badge.warn {
+                background: var(--amber-bg);
+                color: var(--amber);
+            }
+
+            .badge.locked {
+                background: #F0F2F5;
+                color: var(--text-muted);
+            }
+
+        main {
+            padding: 0;
+        }
+
+        .panel {
+            display: none;
+        }
+
+            .panel.active {
+                display: block;
+            }
+
+        /* ---------- metric cards ---------- */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit,minmax(170px,1fr));
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .card {
+            --chip-bg: var(--hue-bg, var(--accent-bg));
+            --chip-fg: var(--hue-fg, var(--accent));
+            --icon: var(--i-activity);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            padding: 14px 16px 16px;
+            display: grid;
+            grid-template-columns: 34px 1fr;
+            align-items: center;
+            column-gap: 10px;
+            row-gap: 10px;
+        }
+
+            .card::before {
+                content: '';
+                grid-area: 1 / 1;
+                width: 34px;
+                height: 34px;
+                border-radius: 10px;
+                background: var(--chip-bg);
+            }
+
+            .card::after {
+                content: '';
+                grid-area: 1 / 1;
+                width: 34px;
+                height: 34px;
+                background: var(--chip-fg);
+                -webkit-mask: var(--icon) center / 17px 17px no-repeat;
+                mask: var(--icon) center / 17px 17px no-repeat;
+            }
+
+            .card .label {
+                grid-column: 2;
+                grid-row: 1;
+                font-size: 13px;
+                color: var(--text-2);
+                margin: 0;
+            }
+
+            .card .value {
+                grid-column: 1 / -1;
+                grid-row: 2;
+                font-size: 26px;
+                line-height: 1.1;
+                font-weight: 700;
+                letter-spacing: -0.02em;
+                font-family: var(--sans);
+                font-variant-numeric: tabular-nums;
+                overflow-wrap: anywhere;
+            }
+
+                .card .value .unit {
+                    font-size: 12px;
+                    font-weight: 500;
+                    letter-spacing: 0;
+                    color: var(--text-muted);
+                    margin-left: 5px;
+                    font-family: var(--sans);
+                }
+
+            .card.flag-warn {
+                --chip-bg: var(--amber-bg);
+                --chip-fg: var(--amber);
+                background: #FFFCF6;
+                border-color: #EFC98A;
+            }
+
+                .card.flag-warn .value {
+                    color: var(--amber);
+                }
+
+            .card.flag-danger {
+                --chip-bg: var(--danger-bg);
+                --chip-fg: var(--danger);
+                background: #FFF9F9;
+                border-color: var(--danger-border);
+            }
+
+                .card.flag-danger .value {
+                    color: var(--danger);
+                }
+
+        #vitalsCards .card:nth-child(1) {
+            --icon: var(--i-heart);
+            --hue-fg: var(--red);
+            --hue-bg: var(--red-bg);
+        }
+
+        #vitalsCards .card:nth-child(2) {
+            --icon: var(--i-drop);
+            --hue-fg: var(--blue);
+            --hue-bg: var(--blue-bg);
+        }
+
+        #vitalsCards .card:nth-child(3) {
+            --icon: var(--i-thermo);
+            --hue-fg: var(--coral);
+            --hue-bg: var(--coral-bg);
+        }
+
+        #vitalsCards .card:nth-child(4) {
+            --icon: var(--i-activity);
+            --hue-fg: var(--violet);
+            --hue-bg: var(--violet-bg);
+        }
+
+        #fluidCards .card:nth-child(1) {
+            --icon: var(--i-drop);
+            --hue-fg: var(--blue);
+            --hue-bg: var(--blue-bg);
+        }
+
+        #fluidCards .card:nth-child(2) {
+            --icon: var(--i-drop);
+            --hue-fg: var(--teal);
+            --hue-bg: var(--teal-bg);
+        }
+
+        #fluidCards .card:nth-child(3) {
+            --icon: var(--i-activity);
+            --hue-fg: var(--green);
+            --hue-bg: var(--green-bg);
+        }
+
+        #fluidCards .card:nth-child(4) {
+            --icon: var(--i-clock);
+            --hue-fg: var(--amber-c);
+            --hue-bg: var(--amber-c-bg);
+        }
+
+        #ventCards .card:nth-child(1) {
+            --icon: var(--i-wind);
+            --hue-fg: var(--green);
+            --hue-bg: var(--green-bg);
+        }
+
+        #ventCards .card:nth-child(2) {
+            --icon: var(--i-wind);
+            --hue-fg: var(--teal);
+            --hue-bg: var(--teal-bg);
+        }
+
+        #ventCards .card:nth-child(3) {
+            --icon: var(--i-drop);
+            --hue-fg: var(--blue);
+            --hue-bg: var(--blue-bg);
+        }
+
+        #gcsCards .card:nth-child(1) {
+            --icon: var(--i-gauge);
+            --hue-fg: var(--violet);
+            --hue-bg: var(--violet-bg);
+        }
+
+        #gcsCards .card:nth-child(2) {
+            --icon: var(--i-eye);
+            --hue-fg: var(--teal);
+            --hue-bg: var(--teal-bg);
+        }
+
+        #gcsCards .card:nth-child(3) {
+            --icon: var(--i-activity);
+            --hue-fg: var(--green);
+            --hue-bg: var(--green-bg);
+        }
+
+        /* ---------- charts ---------- */
+        .chart-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        @media (max-width:900px) {
+            .chart-row {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        main, .chart-box, .grid-box {
+            min-width: 0;
+        }
+
+        .chart-box {
+            position: relative;
+            overflow: hidden;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            padding: 14px 18px 16px;
+        }
+
+            .chart-box h3 {
+                font-size: 14px;
+                font-weight: 600;
+                margin: 0 0 10px;
+                color: var(--text);
+            }
+
+            .chart-box canvas {
+                max-height: 200px;
+                max-width: 100%;
+            }
+
+        /* ---------- tables ---------- */
+        .grid-box {
+            position: relative;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            overflow: hidden;
+        }
+
+            .grid-box .grid-head {
+                padding: 12px 18px;
+                border-bottom: 1px solid var(--border);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 12px;
+            }
+
+            .grid-box h3 {
+                font-size: 14px;
+                font-weight: 600;
+                margin: 0;
+                color: var(--text);
+            }
+
+        .grid-scroll {
+            overflow-x: auto;
+        }
+
+        table.hourly {
+            border-collapse: collapse;
+            width: 100%;
+            font-family: var(--sans);
+            font-variant-numeric: tabular-nums;
+            font-size: 12.5px;
+            white-space: nowrap;
+        }
+
+            table.hourly th, table.hourly td {
+                padding: 7px 10px;
+                text-align: right;
+                border-bottom: 1px solid var(--border);
+            }
+
+            table.hourly th {
+                background: var(--surface-2);
+                font-weight: 600;
+                font-size: 12px;
+                color: var(--text-2);
+                position: sticky;
+                top: 0;
+                border-bottom: 1px solid var(--border-strong);
+            }
+
+                table.hourly td:first-child, table.hourly th:first-child {
+                    text-align: left;
+                    position: sticky;
+                    left: 0;
+                    background: var(--surface);
+                    color: var(--text-2);
+                    font-weight: 600;
+                    z-index: 2;
+                    padding-left: 18px;
+                }
+
+                table.hourly th:first-child {
+                    background: var(--surface-2);
+                }
+
+            table.hourly td.flag {
+                color: var(--danger);
+                font-weight: 700;
+            }
+
+            table.hourly tbody tr:hover td {
+                background: #F4F8FD;
+            }
+
+            table.hourly td.actions {
+                font-family: var(--sans);
+                padding-right: 18px;
+            }
+
+        .empty-row td {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 28px;
+        }
+
+        table.orders {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 13px;
+        }
+
+            table.orders th, table.orders td {
+                padding: 9px 12px;
+                border-bottom: 1px solid var(--border);
+                text-align: left;
+            }
+
+                table.orders th:first-child, table.orders td:first-child {
+                    padding-left: 18px;
+                }
+
+            table.orders th {
+                background: var(--surface-2);
+                font-weight: 600;
+                color: var(--text-2);
+                font-size: 12px;
+            }
+
+            table.orders tbody tr:hover td {
+                background: #F4F8FD;
+            }
+
+        .note {
+            font-size: 12px;
+            color: var(--text-muted);
+            padding: 10px 18px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* ---------- entry drawer ---------- */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(13,14,16,0.45);
+            display: none;
+            align-items: flex-start;
+            justify-content: flex-end;
+            z-index: 50;
+            padding: env(safe-area-inset-top, 0);
+        }
+
+            .overlay.open {
+                display: flex;
+            }
+
+        .drawer {
+            background: var(--surface);
+            width: 540px;
+            max-width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            border-radius: 28px 0 0 28px;
+            box-shadow: -8px 0 32px rgba(0,0,0,0.12);
+            animation: slideIn .18s ease-out;
+        }
+
+        @media (max-width:600px) {
+            .drawer {
+                width: 100%;
+                border-radius: 0;
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(24px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .drawer-head {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+            .drawer-head h2 {
+                font-size: 18px;
+                margin: 0;
+                font-weight: 600;
+            }
+
+            .drawer-head .close {
+                cursor: pointer;
+                color: var(--text-muted);
+                font-size: 22px;
+                line-height: 1;
+                border: none;
+                background: var(--surface-2);
+                width: 36px;
+                height: 36px;
+                border-radius: 12px;
+                padding: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+                .drawer-head .close:hover {
+                    color: var(--text);
+                    background: #EDF1F6;
+                }
+
+        .drawer-body {
+            padding: 18px 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .drawer-foot {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+            .drawer-foot .btn {
+                padding: 10px 18px;
+                border-radius: 12px;
+                font-weight: 600;
+            }
+
+        .hour-picker {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+        }
+
+            .hour-picker label {
+                font-size: 12px;
+                color: var(--text-2);
+                font-weight: 600;
+            }
+
+            .hour-picker select {
+                flex: 1;
+                min-width: 150px;
+                font-size: 14px;
+                padding: 10px 12px;
+            }
+
+            .hour-picker .lock-badge {
+                padding: 4px 10px;
+                background: var(--amber-bg);
+                color: var(--amber);
+                border-radius: 20px;
+                font-size: 11px;
+                font-weight: 600;
+            }
+
+        details.section {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+
+            details.section[open] {
+                border-color: var(--border-strong);
+            }
+
+            details.section summary {
+                padding: 13px 16px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 600;
+                color: var(--text);
+                background: var(--surface-2);
+                list-style: none;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+                details.section summary::-webkit-details-marker {
+                    display: none;
+                }
+
+                details.section summary::after {
+                    content: '+';
+                    color: var(--text-muted);
+                    font-size: 18px;
+                }
+
+            details.section[open] summary::after {
+                content: '–';
+            }
+
+            details.section .section-body {
+                padding: 16px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+            }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+            .field.full {
+                grid-column: 1 / -1;
+            }
+
+            .field label {
+                font-size: 12px;
+                color: var(--text-2);
+                font-weight: 600;
+            }
+
+            .field .input-wrap {
+                position: relative;
+            }
+
+            .field input, .field select {
+                width: 100%;
+                padding: 9px 30px 9px 12px;
+                font-size: 14px;
+            }
+
+                .field input[type=checkbox] {
+                    width: 16px;
+                    padding: 0;
+                }
+
+                .field input:focus, .field select:focus {
+                    outline: 2px solid var(--accent);
+                    outline-offset: 1px;
+                }
+
+            .field .unit-suffix {
+                position: absolute;
+                right: 12px;
+                top: 50%;
+                transform: translateY(-50%);
+                font-size: 11px;
+                color: var(--text-muted);
+                pointer-events: none;
+            }
+
+            .field .error-msg {
+                font-size: 11px;
+                color: var(--danger);
+                margin-top: 2px;
+                display: none;
+            }
+
+            .field.error input, .field.error select {
+                border-color: var(--danger);
+            }
+
+            .field.error .error-msg {
+                display: block;
+            }
+
+        .checkrow {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+        }
+
+            .checkrow label {
+                font-size: 13px;
+                color: var(--text);
+                font-weight: 400;
+            }
+
+        .calc-note {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .subgrid-title {
+            grid-column: 1/-1;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+            margin-top: 6px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--ink);
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 14px;
+            font-size: 13px;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity .2s, transform .2s;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+            .toast.show {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+        .warn-inline {
+            font-size: 12px;
+            color: var(--amber);
+            background: var(--amber-bg);
+            padding: 9px 12px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            display: none;
+        }
+
+            .warn-inline.show {
+                display: block;
+            }
+
+        /* ---------- modals ---------- */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(13,14,16,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 60;
+            padding: 16px;
+        }
+
+            .modal-backdrop.open {
+                display: flex;
+            }
+
+        .modal {
+            background: var(--surface);
+            border-radius: 24px;
+            padding: 26px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.2);
+            animation: modalSlide .2s ease-out;
+        }
+
+        @keyframes modalSlide {
+            from {
+                transform: scale(0.95);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .modal h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 0 8px;
+        }
+
+        .modal p {
+            font-size: 14px;
+            color: var(--text-2);
+            margin: 0 0 20px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all .15s;
+        }
+
+        .camera-modal {
+            max-width: 520px;
+        }
+
+        .camera-viewport {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #0D0E10;
+            border-radius: 18px;
+            overflow: hidden;
+            margin-bottom: 14px;
+        }
+
+            .camera-viewport video, .camera-viewport img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                display: block;
+            }
+
+        .camera-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin: 0 0 16px;
+        }
+
+        .camera-error {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            height: 100%;
+            color: #fff;
+            font-size: 13px;
+            padding: 20px;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .camera-photo-chip {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border: 1px solid var(--border-strong);
+            border-radius: 14px;
+            background: var(--surface-2);
+            margin-bottom: 16px;
+        }
+
+            .camera-photo-chip img {
+                width: 44px;
+                height: 44px;
+                object-fit: cover;
+                border-radius: 10px;
+                flex-shrink: 0;
+            }
+
+            .camera-photo-chip .meta {
+                font-size: 12px;
+                color: var(--text-2);
+                flex: 1;
+            }
+
+            .camera-photo-chip button {
+                font-size: 12px;
+                color: var(--danger);
+                background: none;
+                border: none;
+                cursor: pointer;
+                font-weight: 600;
+            }
+
+        .camera-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            color: #cbd5e1;
+            font-size: 13px;
+        }
+
+            .camera-placeholder span:first-child {
+                font-size: 34px;
+            }
+
+        .camera-loading {
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .camera-status {
+            font-size: 13px;
+            margin: 0 0 12px;
+            min-height: 18px;
+            color: var(--text-2);
+        }
+
+            .camera-status.error {
+                color: var(--danger);
+            }
+
+        .field.autofilled input, .field.autofilled select {
+            background: var(--accent-bg);
+            border-color: var(--accent);
+        }
+
+        .edit-table-modal {
+            max-width: 640px;
+        }
+
+        .edit-table-rows {
+            max-height: 56vh;
+            overflow-y: auto;
+            margin-bottom: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .edit-table-row {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+            .edit-table-row input {
+                flex: 1;
+                min-width: 0;
+                padding: 8px 10px;
+                border: 1px solid var(--border-strong);
+                border-radius: 10px;
+                font-family: var(--sans);
+                font-size: 13px;
+                background: var(--surface);
+                color: var(--text);
+            }
+
+                .edit-table-row input:focus {
+                    outline: 2px solid var(--accent);
+                    outline-offset: -1px;
+                }
+
+            .edit-table-row .removeRowBtn {
+                flex: 0 0 auto;
+                width: 32px;
+                height: 32px;
+                border-radius: 10px;
+                border: 1px solid var(--border-strong);
+                background: var(--surface-2);
+                color: var(--danger);
+                font-size: 16px;
+                line-height: 1;
+                cursor: pointer;
+            }
+
+                .edit-table-row .removeRowBtn:hover {
+                    background: var(--danger-bg);
+                }
+
+        .locked-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.6);
+            border-radius: var(--radius-card);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 600;
+            z-index: 5;
+        }
+
+        .grid-box.locked .locked-overlay {
+            display: flex;
+        }
+
+        .grid-box.locked .grid-scroll, .grid-box.locked .note {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        /* ---------- small screens: rail becomes a top strip ---------- */
+        @media (max-width:820px) {
+            body {
+                padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+            }
+
+            .shell {
+                flex-direction: column;
+                border-radius: 0;
+                border: 0;
+                min-height: 100vh;
+            }
+
+            .rail {
+                width: auto;
+                border-right: 0;
+                border-bottom: 1px solid var(--border);
+                border-radius: 0;
+            }
+
+            .rail-inner {
+                position: static;
+                height: auto;
+                flex-direction: row;
+                align-items: center;
+                padding: 10px 14px;
+                gap: 12px;
+                overflow-x: auto;
+            }
+
+            .brand {
+                display: none;
+            }
+
+            .tabbar {
+                flex-direction: row;
+                gap: 8px;
+            }
+
+            .rail-actions {
+                margin-top: 0;
+                margin-left: auto;
+                flex-direction: row;
+            }
+
+            .tab.active::before {
+                left: 9px;
+                right: 9px;
+                top: auto;
+                bottom: -10px;
+                width: auto;
+                height: 4px;
+                border-radius: 4px 4px 0 0;
+            }
+
+            .tab[data-tip]::after, .rail-btn[data-tip]::after {
+                display: none;
+            }
+
+            .content {
+                padding: 12px 12px 28px;
+            }
+        }
+
+        @media print {
+            body {
+                background: #fff;
+                padding: 0;
+            }
+
+            .shell {
+                background: #fff;
+                border: 0;
+                border-radius: 0;
+                display: block;
+            }
+
+            .rail {
+                display: none;
+            }
+
+            .topbar {
+                position: static;
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="shell">
+
+        <aside class="rail">
+            <div class="rail-inner">
+                <div class="brand" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg></div>
+                <div class="tabbar" id="tabbar" role="tablist" aria-label="Dashboard sections">
+                    <div class="tab active" data-panel="vitals" role="tab" aria-selected="true" aria-controls="panel-vitals" tabindex="0" data-tip="Vitals"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2" /><rect x="14" y="3" width="7" height="7" rx="2" /><rect x="3" y="14" width="7" height="7" rx="2" /><rect x="14" y="14" width="7" height="7" rx="2" /></svg><span class="sr">Vitals</span></div>
+                    <div class="tab" data-panel="fluid" role="tab" aria-selected="false" aria-controls="panel-fluid" tabindex="-1" data-tip="Fluid balance"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" /></svg><span class="sr">Fluid balance</span></div>
+                    <div class="tab" data-panel="vent" role="tab" aria-selected="false" aria-controls="panel-vent" tabindex="-1" data-tip="Ventilator"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2" /><path d="M9.6 4.6A2 2 0 1 1 11 8H2" /><path d="M12.6 19.4A2 2 0 1 0 14 16H2" /></svg><span class="sr">Ventilator</span></div>
+                    <div class="tab" data-panel="gcs" role="tab" aria-selected="false" aria-controls="panel-gcs" tabindex="-1" data-tip="GCS / neuro"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M17 12h-2l-2 5-2-10-2 5H7" /></svg><span class="sr">GCS / neuro</span></div>
+                    <div class="tab" data-panel="drugs" role="tab" aria-selected="false" aria-controls="panel-drugs" tabindex="-1" data-tip="Drug infusions"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="3" width="8" height="10" rx="2.5" /><path d="M12 13v8" /><path d="M12 6.5v3" /></svg><span class="sr">Drug infusions</span></div>
+                    <div class="tab" data-panel="labs" role="tab" aria-selected="false" aria-controls="panel-labs" tabindex="-1" data-tip="Investigations"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6" /><path d="M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3" /><path d="M7.5 15h9" /></svg><span class="sr">Investigations</span></div>
+                    <div class="tab" data-panel="orders" role="tab" aria-selected="false" aria-controls="panel-orders" tabindex="-1" data-tip="Medication orders"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" /><path d="m8.5 8.5 7 7" /></svg><span class="sr">Medication orders</span></div>
+                </div>
+                <div class="rail-actions">
+                    <button class="rail-btn" id="exportBtn" aria-label="Export data as CSV" data-tip="Export"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M4 21h16" /></svg></button>
+                    <button class="rail-btn" id="printBtn" aria-label="Print dashboard" data-tip="Print"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6" /><rect x="4" y="9" width="16" height="8" rx="2" /><path d="M7 14h10v7H7z" /></svg></button>
+                </div>
+            </div>
+        </aside>
+
+        <div class="content">
+
+            <div class="topbar">
+                <div class="avatar" id="patientAvatar" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg></div>
+                <div class="patient-id">
+                    <h1 id="patientHeaderName">Loading patient…</h1>
+                    <div class="sub" id="patientHeaderSub"></div>
+                </div>
+                <div class="topbar-right">
+                    <span class="badge ok" id="roomAirBadge" aria-label="Current ventilation mode">Room air</span>
+                    <select id="dateSelect" aria-label="Select date to view"></select>
+                    <button class="btn primary" id="cameraEntryBtn" aria-label="Capture or upload a monitor photo to fill in vital signs"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L8 6H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3z" /><circle cx="12" cy="12.5" r="3.5" /></svg>Scan monitor</button>
+                    <button class="btn primary" id="editManualBtn" aria-label="Manually enter new hourly vital signs"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>New Entry</button>
+                </div>
+            </div>
+
+            <main>
+
+                <section class="panel active" id="panel-vitals" role="tabpanel" aria-labelledby="tab-vitals">
+                    <div class="cards" id="vitalsCards" role="list"></div>
+                    <div class="chart-row">
+                        <div class="chart-box"><h3>Temp / heart rate / respiratory rate — hourly</h3><canvas id="vitalsChart" role="img" aria-label="Vital signs trend chart"></canvas></div>
+                        <div class="chart-box"><h3>SpO2 / MAP — hourly</h3><canvas id="spo2Chart" role="img" aria-label="Oxygen saturation and mean arterial pressure trend"></canvas></div>
+                    </div>
+                    <div class="grid-box" id="vitalsGridBox">
+                        <div class="grid-head"><h3>Hourly chart — vital signs &amp; hemodynamics</h3></div>
+                        <div class="grid-scroll"><table class="hourly" id="vitalsTable" role="table" aria-label="Hourly vital signs data"></table></div>
+                        <div class="locked-overlay">Entry locked after 24 hours</div>
+                        <div class="note">Values flagged in red fall outside the normal reference range. Click a row's edit icon to correct an entry.</div>
+                    </div>
+                </section>
+
+                <section class="panel" id="panel-fluid" role="tabpanel" aria-labelledby="tab-fluid">
+                    <div class="cards" id="fluidCards" role="list"></div>
+                    <div class="chart-row">
+                        <div class="chart-box" style="grid-column:1 / -1;"><h3>Input vs output — hourly</h3><canvas id="fluidChart" role="img" aria-label="Fluid input and output trend"></canvas></div>
+                    </div>
+                    <div class="grid-box" id="fluidGridBox">
+                        <div class="grid-head"><h3>Hourly chart — input / output</h3></div>
+                        <div class="grid-scroll"><table class="hourly" id="fluidTable" role="table" aria-label="Hourly fluid balance data"></table></div>
+                        <div class="locked-overlay">Entry locked after 24 hours</div>
+                    </div>
+                </section>
+
+                <section class="panel" id="panel-vent" role="tabpanel" aria-labelledby="tab-vent">
+                    <div class="cards" id="ventCards" role="list"></div>
+                    <div class="grid-box" id="ventGridBox">
+                        <div class="grid-head"><h3>Hourly chart — ventilator / respiratory support</h3></div>
+                        <div class="grid-scroll"><table class="hourly" id="ventTable" role="table" aria-label="Ventilator settings data"></table></div>
+                        <div class="locked-overlay">Entry locked after 24 hours</div>
+                    </div>
+                </section>
+
+                <section class="panel" id="panel-gcs" role="tabpanel" aria-labelledby="tab-gcs">
+                    <div class="cards" id="gcsCards" role="list"></div>
+                    <div class="chart-row">
+                        <div class="chart-box" style="grid-column:1 / -1;"><h3>GCS total — hourly</h3><canvas id="gcsChart" role="img" aria-label="Glasgow Coma Scale trend"></canvas></div>
+                    </div>
+                    <div class="grid-box" id="gcsGridBox">
+                        <div class="grid-head"><h3>Hourly chart — Glasgow Coma Scale, motor movement, pupils</h3></div>
+                        <div class="grid-scroll"><table class="hourly" id="gcsTable" role="table" aria-label="GCS and neuro assessment data"></table></div>
+                        <div class="locked-overlay">Entry locked after 24 hours</div>
+                    </div>
+                </section>
+
+                <section class="panel" id="panel-drugs" role="tabpanel" aria-labelledby="tab-drugs">
+                    <div class="grid-box" id="drugsGridBox">
+                        <div class="grid-head"><h3>Hourly chart — drug infusions (started / infused)</h3></div>
+                        <div class="grid-scroll"><table class="hourly" id="drugsTable" role="table" aria-label="Drug infusion data"></table></div>
+                        <div class="locked-overlay">Entry locked after 24 hours</div>
+                    </div>
+                </section>
+
+                <section class="panel" id="panel-labs" role="tabpanel" aria-labelledby="tab-labs">
+                    <div class="grid-box">
+                        <div class="grid-head"><h3>Investigations — once-daily labs</h3><button class="btn ghost" id="editLabsBtn" style="display:inline-flex;align-items:center;gap:8px;" aria-label="Edit investigation results"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>Edit</button></div>
+                        <table class="orders" id="labsTable" role="table" aria-label="Laboratory test results"></table>
+                    </div>
+                </section>
+
+                <section class="panel" id="panel-orders" role="tabpanel" aria-labelledby="tab-orders">
+                    <div class="grid-box">
+                        <div class="grid-head"><h3>Medication orders</h3><button class="btn ghost" id="editOrdersBtn" style="display:inline-flex;align-items:center;gap:8px;" aria-label="Edit medication orders"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>Edit</button></div>
+                        <table class="orders" id="ordersTable" role="table" aria-label="Current medication orders"></table>
+                    </div>
+                </section>
+
+            </main>
+
+        </div>
+    </div>
+
+    <!-- ENTRY DRAWER -->
+    <div class="overlay" id="overlay" role="dialog" aria-labelledby="drawerTitle" aria-modal="true">
+        <div class="drawer">
+            <div class="drawer-head">
+                <h2 id="drawerTitle">New hourly entry</h2>
+                <button class="close" id="closeDrawer" aria-label="Close form">&times;</button>
+            </div>
+            <div class="drawer-body">
+                <div class="hour-picker">
+                    <label for="hourSelect">Hour</label>
+                    <select id="hourSelect" aria-label="Select hour for entry"></select>
+                    <span class="lock-badge" id="lockBadge" style="display:none;">Locked (24h+)</span>
+                </div>
+                <div class="warn-inline" id="dupWarn" role="alert">An entry already exists for this hour. Saving will overwrite it.</div>
+
+                <div class="camera-photo-chip" id="attachedPhotoChip" style="display:none;">
+                    <img id="attachedPhotoThumb" alt="Attached chart photo">
+                    <div class="meta">Chart photo attached — verify readings below before saving.</div>
+                    <button type="button" id="removeAttachedPhotoBtn">Remove</button>
+                </div>
+
+                <form id="entryForm" novalidate>
+
+                    <fieldset>
+                        <details class="section" open>
+                            <summary>Vital signs</summary>
+                            <div class="section-body">
+                                <div class="field"><label for="f_temp">Temperature (°F)</label><div class="input-wrap"><input type="number" step="0.1" inputmode="decimal" id="f_temp" placeholder="98.6" min="85" max="110"><span class="unit-suffix">°F</span></div><div class="error-msg">Valid range: 85–110°F</div></div>
+                                <div class="field"><label for="f_rr">Respiratory rate</label><div class="input-wrap"><input type="number" inputmode="numeric" id="f_rr" placeholder="18" min="6" max="60"><span class="unit-suffix">/min</span></div><div class="error-msg">Valid range: 6–60/min</div></div>
+                                <div class="field"><label for="f_hr">Heart rate</label><div class="input-wrap"><input type="number" inputmode="numeric" id="f_hr" placeholder="96" min="30" max="200"><span class="unit-suffix">bpm</span></div><div class="error-msg">Valid range: 30–200 bpm</div></div>
+                                <div class="field"><label for="f_pulse">Pulse rate</label><div class="input-wrap"><input type="number" inputmode="numeric" id="f_pulse" placeholder="96" min="30" max="200"><span class="unit-suffix">/min</span></div><div class="error-msg">Valid range: 30–200/min</div></div>
+                            </div>
+                        </details>
+
+                        <details class="section" open>
+                            <summary>Hemodynamics</summary>
+                            <div class="section-body">
+                                <div class="field"><label for="f_iabp">IABP</label><input type="text" id="f_iabp" placeholder="—"></div>
+                                <div class="field"><label for="f_spo2">SpO2</label><div class="input-wrap"><input type="number" inputmode="numeric" id="f_spo2" placeholder="98" min="50" max="100"><span class="unit-suffix">%</span></div><div class="error-msg">Valid range: 50–100%</div></div>
+                                <div class="field"><label for="f_nibpSys">NIBP — systolic</label><div class="input-wrap"><input type="number" inputmode="numeric" id="f_nibpSys" placeholder="110" min="40" max="300"><span class="unit-suffix">mmHg</span></div><div class="error-msg">Valid range: 40–300 mmHg</div></div>
+                                <div class="field"><label for="f_nibpDia">NIBP — diastolic</label><div class="input-wrap"><input type="number" inputmode="numeric" id="f_nibpDia" placeholder="70" min="20" max="200"><span class="unit-suffix">mmHg</span></div><div class="error-msg">Valid range: 20–200 mmHg</div></div>
+                                <div class="field"><label for="f_map">MAP</label><div class="input-wrap"><input type="number" inputmode="numeric" id="f_map" placeholder="83" min="30" max="250"><span class="unit-suffix">mmHg</span></div><div class="error-msg">Valid range: 30–250 mmHg</div></div>
+                                <div class="field"><label for="f_cvp">CVP</label><input type="text" id="f_cvp" placeholder="—"></div>
+                            </div>
+                        </details>
+
+                        <details class="section" open>
+                            <summary>Glycaemic control</summary>
+                            <div class="section-body">
+                                <div class="field"><label for="f_bg">Blood glucose</label><div class="input-wrap"><input type="number" inputmode="numeric" id="f_bg" placeholder="103" min="40" max="500"><span class="unit-suffix">mg/dL</span></div><div class="error-msg">Valid range: 40–500 mg/dL</div></div>
+                                <div class="field"><label for="f_insulin">Insulin</label><input type="text" id="f_insulin" placeholder="—"></div>
+                            </div>
+                        </details>
+
+                        <details class="section">
+                            <summary>Drug infusion</summary>
+                            <div class="section-body">
+                                <div class="subgrid-title">Adrenaline</div>
+                                <div class="field"><label for="f_adrStart">Started</label><input type="text" id="f_adrStart"></div>
+                                <div class="field"><label for="f_adrInf">Infused</label><input type="text" id="f_adrInf"></div>
+                                <div class="subgrid-title">Nor-adrenaline</div>
+                                <div class="field"><label for="f_norStart">Started</label><input type="text" id="f_norStart"></div>
+                                <div class="field"><label for="f_norInf">Infused</label><input type="text" id="f_norInf"></div>
+                                <div class="subgrid-title">Dopamine</div>
+                                <div class="field"><label for="f_dopStart">Started</label><input type="text" id="f_dopStart"></div>
+                                <div class="field"><label for="f_dopInf">Infused</label><input type="text" id="f_dopInf"></div>
+                                <div class="subgrid-title">Dobutamine</div>
+                                <div class="field"><label for="f_dobStart">Started</label><input type="text" id="f_dobStart"></div>
+                                <div class="field"><label for="f_dobInf">Infused</label><input type="text" id="f_dobInf"></div>
+                            </div>
+                        </details>
+
+                        <details class="section" open>
+                            <summary>Input</summary>
+                            <div class="section-body">
+                                <div class="field"><label for="f_pn">Parenteral nutrition</label><div class="input-wrap"><input type="number" inputmode="numeric" id="f_pn" placeholder="0" min="0" max="2000"><span class="unit-suffix">ml</span></div><div class="error-msg">Must be ≥ 0</div></div>
+                                <div class="field"><label for="f_rtfeeds">RT feeds</label><div class="input-wrap"><input type="number" inputmode="numeric" id="f_rtfeeds" placeholder="0" min="0" max="2000"><span class="unit-suffix">ml</span></div><div class="error-msg">Must be ≥ 0</div></div>
+                                <div class="field"><label for="f_iv1">IV fluids — line 1</label><div class="input-wrap"><input type="number" inputmode="numeric" id="f_iv1" placeholder="100" min="0" max="2000"><span class="unit-suffix">ml</span></div><div class="error-msg">Must be ≥ 0</div></div>
+                                <div class="field"><label for="f_iv2">IV fluids — line 2</label><div class="input-wrap"><input type="number" inputmode="numeric" id="f_iv2" placeholder="0" min="0" max="2000"><span class="unit-suffix">ml</span></div><div class="error-msg">Must be ≥ 0</div></div>
+                                <div class="field full"><label>Total input this hour</label><div id="calcInput" style="font-family:var(--mono); font-size:15px; font-weight:600;">0 ml</div><div class="calc-note">Auto-calculated from the fields above.</div></div>
+                            </div>
+                        </details>
+
+                        <details class="section" open>
+                            <summary>Output</summary>
+                            <div class="section-body">
+                                <div class="field"><label for="f_drains">Drains</label><div class="input-wrap"><input type="number" inputmode="numeric" id="f_drains" placeholder="0" min="0" max="2000"><span class="unit-suffix">ml</span></div><div class="error-msg">Must be ≥ 0</div></div>
+                                <div class="field"><label for="f_stool">Stool</label><input type="text" id="f_stool" placeholder="—"></div>
+                                <div class="field"><label for="f_urine">Urine</label><div class="input-wrap"><input type="number" inputmode="numeric" id="f_urine" placeholder="80" min="0" max="2000"><span class="unit-suffix">ml</span></div><div class="error-msg">Must be ≥ 0</div></div>
+                                <div class="field full"><label>Total output this hour</label><div id="calcOutput" style="font-family:var(--mono); font-size:15px; font-weight:600;">0 ml</div><div class="calc-note">Auto-calculated from the fields above.</div></div>
+                            </div>
+                        </details>
+
+                        <details class="section">
+                            <summary>Ventilator</summary>
+                            <div class="section-body">
+                                <div class="field"><label for="f_ventMode">Mode</label><input type="text" id="f_ventMode" placeholder="Room air"></div>
+                                <div class="field"><label for="f_fio2">FiO2</label><input type="text" id="f_fio2" placeholder="—"></div>
+                                <div class="field"><label for="f_rateSet">Rate — set</label><input type="text" id="f_rateSet"></div>
+                                <div class="field"><label for="f_rateSpont">Rate — spont</label><input type="text" id="f_rateSpont"></div>
+                                <div class="field"><label for="f_tidalSet">Tidal volume — set</label><input type="text" id="f_tidalSet"></div>
+                                <div class="field"><label for="f_tidalSpont">Tidal volume — spont</label><input type="text" id="f_tidalSpont"></div>
+                                <div class="field"><label for="f_minvolSet">Min volume — set</label><input type="text" id="f_minvolSet"></div>
+                                <div class="field"><label for="f_minvolSpont">Min volume — spont</label><input type="text" id="f_minvolSpont"></div>
+                                <div class="field"><label for="f_pc">PC</label><input type="text" id="f_pc"></div>
+                                <div class="field"><label for="f_peep">PEEP</label><input type="text" id="f_peep"></div>
+                                <div class="field"><label for="f_ps">PS</label><input type="text" id="f_ps"></div>
+                                <div class="field"><label for="f_pip">PIP</label><input type="text" id="f_pip"></div>
+                                <div class="field"><label for="f_ventSpo2">SpO2</label><input type="text" id="f_ventSpo2"></div>
+                                <div class="field"><label for="f_etco2">EtCO2</label><input type="text" id="f_etco2"></div>
+                                <div class="field full"><label for="f_abg">ABG</label><input type="text" id="f_abg"></div>
+                            </div>
+                        </details>
+
+                        <details class="section" open>
+                            <summary>Glasgow Coma Scale &amp; pupils</summary>
+                            <div class="section-body">
+                                <div class="field"><label for="f_eye">Eye</label><select id="f_eye" aria-label="Glasgow Coma Scale eye opening"><option value="">—</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select></div>
+                                <div class="field"><label for="f_motor">Motor</label><select id="f_motor" aria-label="Glasgow Coma Scale motor response"><option value="">—</option><option value="6">6</option><option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select></div>
+                                <div class="field"><label for="f_verbal">Verbal</label><select id="f_verbal" aria-label="Glasgow Coma Scale verbal response"><option value="">—</option><option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select></div>
+                                <div class="field"><label>GCS total</label><div id="calcGcs" style="font-family:var(--mono); font-size:15px; font-weight:600;">—</div></div>
+
+                                <div class="subgrid-title">Motor movement</div>
+                                <div class="checkrow"><input type="checkbox" id="f_mulR"><label for="f_mulR">Upper limb — R</label></div>
+                                <div class="checkrow"><input type="checkbox" id="f_mulL"><label for="f_mulL">Upper limb — L</label></div>
+                                <div class="checkrow"><input type="checkbox" id="f_mllR"><label for="f_mllR">Lower limb — R</label></div>
+                                <div class="checkrow"><input type="checkbox" id="f_mllL"><label for="f_mllL">Lower limb — L</label></div>
+
+                                <div class="subgrid-title">Pupils</div>
+                                <div class="field"><label for="f_pupilR">Pupil — R</label><input type="text" id="f_pupilR" placeholder="2+"></div>
+                                <div class="field"><label for="f_pupilL">Pupil — L</label><input type="text" id="f_pupilL" placeholder="2+"></div>
+                            </div>
+                        </details>
+
+                    </fieldset>
+                </form>
+            </div>
+            <div class="drawer-foot">
+                <button class="btn danger-text" id="deleteEntryBtn" style="display:none;" aria-label="Delete this entry">Delete entry</button>
+                <div style="display:flex; gap:8px; margin-left:auto;">
+                    <button class="btn ghost" id="cancelEntryBtn">Cancel</button>
+                    <button class="btn primary" id="saveEntryBtn">Save entry</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DELETE CONFIRMATION MODAL -->
+    <div class="modal-backdrop" id="deleteModal">
+        <div class="modal">
+            <h2>Delete entry?</h2>
+            <p id="deleteModalText">This will permanently delete the entry for this hour. This action cannot be undone.</p>
+            <div class="modal-buttons">
+                <button class="modal-btn secondary" id="cancelDeleteBtn">Cancel</button>
+                <button class="modal-btn primary" id="confirmDeleteBtn" style="background:var(--danger); border-color:var(--danger);">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CAMERA CAPTURE MODAL -->
+    <div class="modal-backdrop" id="cameraModal">
+        <div class="modal camera-modal">
+            <h2>Capture vitals from monitor</h2>
+            <p class="camera-hint">Photograph the bedside monitor, or upload an existing photo. Readings are filled in automatically — you review them before saving.</p>
+            <div class="camera-viewport" id="cameraViewport">
+                <img id="cameraPhotoPreview" style="display:none;" alt="Selected monitor photo">
+                <div class="camera-placeholder" id="cameraPlaceholder"><span>📷</span><span>No photo selected</span></div>
+                <div class="camera-loading" id="cameraLoading">Reading monitor…</div>
+            </div>
+            <div class="camera-status" id="cameraStatus" role="status"></div>
+            <input type="file" id="captureInput" accept="image/*" capture="environment" hidden>
+            <input type="file" id="uploadInput" accept="image/*" hidden>
+            <div class="modal-buttons" style="justify-content:space-between;">
+                <button class="modal-btn secondary" id="cameraCancelBtn">Cancel</button>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+                    <button class="modal-btn primary" id="captureBtn">📷 Capture</button>
+                    <button class="modal-btn secondary" id="uploadBtn">🖼 Upload</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT TABLE MODAL (Investigations / Medication orders) -->
+    <div class="modal-backdrop" id="editTableModal">
+        <div class="modal edit-table-modal">
+            <h2 id="editTableTitle">Edit</h2>
+            <div class="edit-table-rows" id="editTableBody"></div>
+            <div class="modal-buttons" style="justify-content:space-between; margin-top:4px;">
+                <button class="modal-btn secondary" id="addEditRowBtn">+ Add row</button>
+                <div style="display:flex; gap:8px;">
+                    <button class="modal-btn secondary" id="cancelEditTableBtn">Cancel</button>
+                    <button class="modal-btn primary" id="saveEditTableBtn">Save changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <script>
+        /* ---------- PATIENT (from API, via ?patientId= in the URL) ---------- */
+        const urlParams = new URLSearchParams(window.location.search);
+        const patientId = urlParams.get('patientId');
+        let currentPatient = null;
+
+        function toISODate(d) {
+            const m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+            return `${d.getFullYear()}-${m}-${day}`;
+        }
+
+        function populateDateSelect() {
+            const sel = document.getElementById('dateSelect');
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            let admitted = null;
+            if (currentPatient && currentPatient.admittedOn) { admitted = new Date(currentPatient.admittedOn); admitted.setHours(0, 0, 0, 0); }
+            const opts = [];
+            for (let i = 0; i < 14; i++) {
+                const d = new Date(today); d.setDate(today.getDate() - i);
+                if (admitted && i > 0 && d < admitted) break;
+                let label = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+                if (admitted) { const dayNo = Math.floor((d - admitted) / 86400000) + 1; if (dayNo >= 1) label += ` (Unit day ${dayNo})`; }
+                if (i === 0) label = 'Today — ' + label;
+                opts.push(`<option value="${toISODate(d)}">${label}</option>`);
+            }
+            sel.innerHTML = opts.join('');
+            sel.value = currentDate;
+        }
+
+        async function loadEntriesForDate(date) {
+            entries = {};
+            if (currentPatient) {
+                try {
+                    const res = await fetch(`/api/HourlyVitals/patient/${currentPatient.patientId}/date/${date}`);
+                    if (res.status === 200) {
+                        const list = await res.json();
+                        list.forEach(en => { entries[en.hour] = en; });
+                    } else {
+                        showToast('Could not load entries from server');
+                    }
+                } catch (err) {
+                    showToast('Could not reach the server');
+                }
+            }
+            renderAll();
+        }
+
+        async function loadPatient() {
+            populateDateSelect();
+            if (!patientId) {
+                document.getElementById('patientHeaderName').textContent = 'No patient selected';
+                document.getElementById('patientHeaderSub').innerHTML = '<span><a href="patient-select.html">← Find a patient</a></span>';
+                renderAll();
+                return;
+            }
+            try {
+                const res = await fetch(`/api/Patients/lookup/${encodeURIComponent(patientId)}`);
+                if (res.status === 200) {
+                    currentPatient = await res.json();
+                    currentPatient.patientId = patientId; // the identifier used in the URL / for linking vitals records
+                    document.getElementById('patientHeaderName').textContent =
+                        `${currentPatient.fullName} — Bed ${currentPatient.bed || '—'}`;
+                    document.getElementById('patientHeaderSub').innerHTML = `
+                <span>${currentPatient.age ?? '—'}${currentPatient.sex || ''}</span>
+                <span>Dept: ${currentPatient.department || '—'}</span>
+                <span>Dr. ${currentPatient.doctorName || '—'}</span>
+                <span>${currentPatient.caseType || ''}</span>
+                <span>Admitted ${currentPatient.admittedOn ? new Date(currentPatient.admittedOn).toLocaleString() : '—'}</span>
+              `;
+                    populateDateSelect();
+                    await loadEntriesForDate(currentDate);
+                    return;
+                } else if (res.status === 404) {
+                    document.getElementById('patientHeaderName').textContent = 'Patient not found';
+                } else if (res.status === 502) {
+                    document.getElementById('patientHeaderName').textContent = 'Could not reach the hospital patient system';
+                } else {
+                    document.getElementById('patientHeaderName').textContent = 'Error loading patient';
+                }
+            } catch (err) {
+                document.getElementById('patientHeaderName').textContent = 'Could not reach server';
+            }
+            renderAll();
+        }
+
+        const HOURS = ["0700", "0800", "0900", "1000", "1100", "1200", "1300", "1400", "1500", "1600", "1700", "1800",
+            "1900", "2000", "2100", "2200", "2300", "2400", "0100", "0200", "0300", "0400", "0500", "0600"];
+
+        /* ---------- VALIDATION RULES ---------- */
+        const VALIDATION_RULES = {
+            temp: { min: 85, max: 110, label: 'Temperature' },
+            rr: { min: 6, max: 60, label: 'Respiratory rate' },
+            hr: { min: 30, max: 200, label: 'Heart rate' },
+            pulse: { min: 30, max: 200, label: 'Pulse rate' },
+            spo2: { min: 50, max: 100, label: 'SpO2' },
+            nibpSys: { min: 40, max: 300, label: 'Systolic BP' },
+            nibpDia: { min: 20, max: 200, label: 'Diastolic BP' },
+            map: { min: 30, max: 250, label: 'MAP' },
+            bg: { min: 40, max: 500, label: 'Blood glucose' },
+            pn: { min: 0, max: 2000, label: 'Parenteral nutrition' },
+            rtfeeds: { min: 0, max: 2000, label: 'RT feeds' },
+            iv1: { min: 0, max: 2000, label: 'IV line 1' },
+            iv2: { min: 0, max: 2000, label: 'IV line 2' },
+            drains: { min: 0, max: 2000, label: 'Drains' },
+            urine: { min: 0, max: 2000, label: 'Urine' }
+        };
+
+        /* ---------- STATE & PERSISTENCE ---------- */
+        let entries = {};
+        let editingHour = null;
+        let currentDate = toISODate(new Date());
+        let pendingDelete = null;
+        let capturedPhoto = null;
+        let cameraStream = null;
+
+
+        function orderedEntries() {
+            return HOURS.filter(h => entries[h]).map(h => entries[h]);
+        }
+
+        function isEntryLocked(entry) {
+            if (!entry || !entry.confirmedAt) return false;
+            const entryTime = new Date(entry.confirmedAt);
+            const now = new Date();
+            const hoursDiff = (now - entryTime) / (1000 * 60 * 60);
+            return hoursDiff >= 24;
+        }
+
+        /* ---------- VALIDATION ---------- */
+        function validateField(fieldId, value) {
+            if (!value || value === '') return true;
+            const rule = VALIDATION_RULES[fieldId];
+            if (!rule) return true;
+
+            const num = parseFloat(value);
+            if (isNaN(num)) return false;
+            return num >= rule.min && num <= rule.max;
+        }
+
+        function showFieldError(fieldId, show) {
+            const field = document.getElementById('f_' + fieldId)?.closest('.field');
+            if (!field) return;
+            if (show) field.classList.add('error');
+            else field.classList.remove('error');
+        }
+
+        function validateForm() {
+            let valid = true;
+            Object.keys(VALIDATION_RULES).forEach(fieldId => {
+                const el = document.getElementById('f_' + fieldId);
+                if (el && el.value && !validateField(fieldId, el.value)) {
+                    showFieldError(fieldId, true);
+                    valid = false;
+                }
+            });
+            return valid;
+        }
+
+        /* ---------- DRAWER OPEN/CLOSE ---------- */
+        const overlay = document.getElementById('overlay');
+        const hourSelect = document.getElementById('hourSelect');
+        const dupWarn = document.getElementById('dupWarn');
+        const drawerTitle = document.getElementById('drawerTitle');
+        const deleteBtn = document.getElementById('deleteEntryBtn');
+        const lockBadge = document.getElementById('lockBadge');
+
+        function nextEmptyHour() {
+            return HOURS.find(h => !entries[h]) || HOURS[0];
+        }
+
+        function populateHourSelect() {
+            hourSelect.innerHTML = HOURS.map(h => {
+                const entry = entries[h];
+                const locked = entry && isEntryLocked(entry);
+                const status = entry ? (locked ? ' (recorded, locked)' : ' (recorded)') : '';
+                return `<option value="${h}">${h}${status}</option>`;
+            }).join('');
+        }
+
+        const attachedPhotoChip = document.getElementById('attachedPhotoChip');
+        const attachedPhotoThumb = document.getElementById('attachedPhotoThumb');
+
+        function updateAttachedPhotoChip() {
+            const photo = capturedPhoto || (entries[hourSelect.value] && entries[hourSelect.value].photo);
+            if (photo) {
+                attachedPhotoThumb.src = photo;
+                attachedPhotoChip.style.display = 'flex';
+            } else {
+                attachedPhotoChip.style.display = 'none';
+            }
+        }
+
+        document.getElementById('removeAttachedPhotoBtn').addEventListener('click', () => {
+            capturedPhoto = null;
+            if (entries[hourSelect.value]) delete entries[hourSelect.value].photo;
+            updateAttachedPhotoChip();
+        });
+
+        function openDrawer(hour) {
+            populateHourSelect();
+            editingHour = hour || null;
+            const targetHour = hour || nextEmptyHour();
+            hourSelect.value = targetHour;
+            drawerTitle.textContent = hour ? `Edit entry — ${hour}` : 'New hourly entry';
+            deleteBtn.style.display = hour ? 'inline-block' : 'none';
+
+            fillFormFromEntry(entries[targetHour]);
+            toggleDupWarn();
+            checkLock();
+            updateAttachedPhotoChip();
+
+            overlay.classList.add('open');
+            document.getElementById('f_temp').focus();
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDrawer() {
+            overlay.classList.remove('open');
+            editingHour = null;
+            capturedPhoto = null;
+            pendingConfidence = null;
+            clearAutofilled();
+            document.body.style.overflow = '';
+            Object.keys(VALIDATION_RULES).forEach(id => showFieldError(id, false));
+        }
+
+        document.getElementById('editManualBtn').addEventListener('click', () => { capturedPhoto = null; pendingConfidence = null; openDrawer(null); });
+        document.getElementById('closeDrawer').addEventListener('click', closeDrawer);
+        document.getElementById('cancelEntryBtn').addEventListener('click', closeDrawer);
+        overlay.addEventListener('click', e => { if (e.target === overlay) closeDrawer(); });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && overlay.classList.contains('open')) closeDrawer();
+            // Tab management for drawer
+            if (overlay.classList.contains('open') && e.key === 'Tab') {
+                const focusableElements = overlay.querySelectorAll('button, input, select, [tabindex]:not([tabindex="-1"])');
+                const firstElement = focusableElements[0];
+                const lastElement = focusableElements[focusableElements.length - 1];
+                if (e.shiftKey && document.activeElement === firstElement) {
+                    e.preventDefault();
+                    lastElement.focus();
+                } else if (!e.shiftKey && document.activeElement === lastElement) {
+                    e.preventDefault();
+                    firstElement.focus();
+                }
+            }
+        });
+
+        /* ---------- CAPTURE / UPLOAD -> AI EXTRACTION ---------- */
+        const cameraModal = document.getElementById('cameraModal');
+        const cameraPhotoPreview = document.getElementById('cameraPhotoPreview');
+        const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+        const cameraLoading = document.getElementById('cameraLoading');
+        const cameraStatus = document.getElementById('cameraStatus');
+        const captureInput = document.getElementById('captureInput');
+        const uploadInput = document.getElementById('uploadInput');
+        const captureBtn = document.getElementById('captureBtn');
+        const uploadBtn = document.getElementById('uploadBtn');
+        let pendingConfidence = null;
+        let extracting = false;
+
+        // Laptops have no "capture" — upload only
+        if (!('ontouchstart' in window) && navigator.maxTouchPoints === 0) { captureBtn.style.display = 'none'; }
+
+        const EXTRACT_MAP = [
+            ['heart_rate', 'hr'], ['blood_pressure_systolic', 'nibpSys'], ['blood_pressure_diastolic', 'nibpDia'],
+            ['spo2', 'spo2'], ['respiratory_rate', 'rr'], ['temperature', 'temp'],
+            ['etco2', 'etco2'], ['mean_arterial_pressure', 'map']
+        ];
+
+        function setCameraStatus(msg, isError) {
+            cameraStatus.textContent = msg || '';
+            cameraStatus.classList.toggle('error', !!isError);
+        }
+
+        function resetCameraModal() {
+            cameraPhotoPreview.style.display = 'none';
+            cameraPhotoPreview.removeAttribute('src');
+            cameraPlaceholder.style.display = 'flex';
+            cameraLoading.style.display = 'none';
+            setCameraStatus('');
+            captureInput.value = ''; uploadInput.value = '';
+        }
+
+        function openCameraModal() {
+            if (!currentPatient) { showToast('Select a patient first'); return; }
+            resetCameraModal();
+            cameraModal.classList.add('open');
+        }
+
+        function closeCameraModal() {
+            cameraModal.classList.remove('open');
+        }
+
+        function fileToResizedBlob(file, maxDim) {
+            maxDim = maxDim || 1600;
+            return new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                    const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+                    const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+                    const c = document.createElement('canvas'); c.width = w; c.height = h;
+                    c.getContext('2d').drawImage(img, 0, 0, w, h);
+                    URL.revokeObjectURL(url);
+                    c.toBlob(b => b ? resolve(b) : reject(new Error('resize failed')), 'image/jpeg', 0.85);
+                };
+                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('unreadable image')); };
+                img.src = url;
+            });
+        }
+
+        function blobToDataURL(blob) {
+            return new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onload = () => resolve(r.result);
+                r.onerror = reject;
+                r.readAsDataURL(blob);
+            });
+        }
+
+        function clearAutofilled() {
+            document.querySelectorAll('.field.autofilled').forEach(f => f.classList.remove('autofilled'));
+        }
+
+        function applyExtraction(vitals) {
+            let filled = 0;
+            EXTRACT_MAP.forEach(([key, feId]) => {
+                const r = vitals && vitals[key];
+                if (!r || r.value === null || r.value === undefined) return;
+                let v = Number(r.value);
+                if (isNaN(v)) return;
+                if (feId === 'temp') {
+                    if (/c/i.test(r.unit || '') || v < 45) v = v * 9 / 5 + 32;
+                    v = Math.round(v * 10) / 10;
+                } else {
+                    v = Math.round(v);
+                }
+                const el = document.getElementById('f_' + feId);
+                if (!el) return;
+                el.value = v;
+                el.closest('.field').classList.add('autofilled');
+                const det = el.closest('details'); if (det) det.setAttribute('open', '');
+                filled++;
+            });
+            recalc();
+            return filled;
+        }
+
+        async function handleImageSelected(file) {
+            if (!file || extracting) return;
+            extracting = true;
+            setCameraStatus('');
+            cameraLoading.style.display = 'flex';
+            try {
+                const blob = await fileToResizedBlob(file);
+                cameraPhotoPreview.src = URL.createObjectURL(blob);
+                cameraPhotoPreview.style.display = 'block';
+                cameraPlaceholder.style.display = 'none';
+
+                const fd = new FormData();
+                fd.append('image', blob, 'monitor.jpg');
+                const res = await fetch('/api/Vitals/extract', { method: 'POST', body: fd });
+                if (!res.ok) {
+                    setCameraStatus('Could not read the photo (server error). Try again, or enter readings manually.', true);
+                    return;
+                }
+                const result = await res.json();
+                if (!result.success) {
+                    setCameraStatus(result.errorMessage || 'Could not read the photo. Try again, or enter readings manually.', true);
+                    return;
+                }
+                if (result.isMonitorImage === false) {
+                    setCameraStatus("This doesn't look like a patient monitor. Retake the photo, or enter readings manually." + (result.notes ? ' (' + result.notes + ')' : ''), true);
+                    return;
+                }
+
+                capturedPhoto = await blobToDataURL(blob);
+                pendingConfidence = result.confidence || null;
+                closeCameraModal();
+                openDrawer(null);
+                const filled = applyExtraction(result.vitals);
+                validateForm();
+                if (filled === 0) {
+                    showToast('No readings could be read — enter manually');
+                } else if (pendingConfidence === 'low') {
+                    showToast(`⚠️ ${filled} readings filled (low confidence) — check carefully`);
+                } else {
+                    showToast(`✓ ${filled} readings filled — verify before saving`);
+                }
+            } catch (err) {
+                setCameraStatus('Something went wrong reading that image. Try another photo.', true);
+            } finally {
+                cameraLoading.style.display = 'none';
+                captureInput.value = ''; uploadInput.value = '';
+                extracting = false;
+            }
+        }
+
+        captureBtn.addEventListener('click', () => captureInput.click());
+        uploadBtn.addEventListener('click', () => uploadInput.click());
+        captureInput.addEventListener('change', () => handleImageSelected(captureInput.files[0]));
+        uploadInput.addEventListener('change', () => handleImageSelected(uploadInput.files[0]));
+        document.getElementById('cameraCancelBtn').addEventListener('click', closeCameraModal);
+        cameraModal.addEventListener('click', e => { if (e.target === cameraModal) closeCameraModal(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && cameraModal.classList.contains('open')) closeCameraModal(); });
+        document.getElementById('cameraEntryBtn').addEventListener('click', openCameraModal);
+        document.getElementById('entryForm').addEventListener('input', e => {
+            const f = e.target.closest('.field'); if (f) f.classList.remove('autofilled');
+        });
+
+        hourSelect.addEventListener('change', () => {
+            const target = entries[hourSelect.value];
+            fillFormFromEntry(target);
+            toggleDupWarn();
+            checkLock();
+            updateAttachedPhotoChip();
+            Object.keys(VALIDATION_RULES).forEach(id => showFieldError(id, false));
+        });
+
+        function toggleDupWarn() {
+            const exists = !!entries[hourSelect.value] && hourSelect.value !== editingHour;
+            dupWarn.classList.toggle('show', exists);
+        }
+
+        function checkLock() {
+            const entry = entries[hourSelect.value];
+            const locked = entry && isEntryLocked(entry);
+            if (locked) {
+                lockBadge.style.display = 'inline-block';
+                document.querySelectorAll('input, select').forEach(el => el.disabled = true);
+                deleteBtn.style.display = 'none';
+                document.getElementById('saveEntryBtn').textContent = 'Entry locked';
+                document.getElementById('saveEntryBtn').disabled = true;
+            } else {
+                lockBadge.style.display = 'none';
+                document.querySelectorAll('input, select').forEach(el => el.disabled = false);
+                document.getElementById('saveEntryBtn').textContent = 'Save entry';
+                document.getElementById('saveEntryBtn').disabled = false;
+                if (editingHour) deleteBtn.style.display = 'inline-block';
+            }
+        }
+
+        /* ---------- FORM <-> DATA MAPPING ---------- */
+        const FIELD_MAP = {
+            temp: 'temperature', rr: 'respiratoryRate', hr: 'heartRate', pulse: 'pulseRate',
+            iabp: 'iabp', spo2: 'spO2', nibpSys: 'nibpSystolic', nibpDia: 'nibpDiastolic', map: 'map', cvp: 'cvp',
+            bg: 'bloodGlucose', insulin: 'insulin',
+            adrStart: 'adrenalineStarted', adrInf: 'adrenalineInfused',
+            norStart: 'noradrenalineStarted', norInf: 'noradrenalineInfused',
+            dopStart: 'dopamineStarted', dopInf: 'dopamineInfused',
+            dobStart: 'dobutamineStarted', dobInf: 'dobutamineInfused',
+            pn: 'parenteralNutrition', rtfeeds: 'rtFeeds', iv1: 'iv1', iv2: 'iv2',
+            drains: 'drains', stool: 'stool', urine: 'urine',
+            ventMode: 'ventMode', fio2: 'fio2', rateSet: 'rateSet', rateSpont: 'rateSpont',
+            tidalSet: 'tidalSet', tidalSpont: 'tidalSpont', minvolSet: 'minVolSet', minvolSpont: 'minVolSpont',
+            pc: 'pc', peep: 'peep', ps: 'ps', pip: 'pip', ventSpo2: 'ventSpo2', etco2: 'etco2', abg: 'abg',
+            eye: 'gcsEye', motor: 'gcsMotor', verbal: 'gcsVerbal',
+            pupilR: 'pupilR', pupilL: 'pupilL'
+        };
+        const CHECK_FIELD_MAP = { mulR: 'motorUpperR', mulL: 'motorUpperL', mllR: 'motorLowerR', mllL: 'motorLowerL' };
+        const NUMERIC_FIELDS = ['temp', 'rr', 'hr', 'pulse', 'spo2', 'nibpSys', 'nibpDia', 'map', 'bg', 'pn', 'rtfeeds', 'iv1', 'iv2', 'drains', 'urine', 'eye', 'motor', 'verbal'];
+
+        function fillFormFromEntry(entry) {
+            const e = entry || {};
+            Object.entries(FIELD_MAP).forEach(([feId, beId]) => {
+                const el = document.getElementById('f_' + feId);
+                if (el) el.value = (e[beId] ?? '');
+            });
+            Object.entries(CHECK_FIELD_MAP).forEach(([feId, beId]) => {
+                const el = document.getElementById('f_' + feId);
+                if (el) el.checked = !!e[beId];
+            });
+            recalc();
+        }
+
+        function readForm() {
+            const payload = {
+                patientIdentifier: currentPatient ? currentPatient.patientId : null,
+                entryDate: currentDate,
+                hour: hourSelect.value
+            };
+            Object.entries(FIELD_MAP).forEach(([feId, beId]) => {
+                const raw = document.getElementById('f_' + feId).value.trim();
+                if (raw === '') payload[beId] = null;
+                else if (NUMERIC_FIELDS.includes(feId)) payload[beId] = parseFloat(raw);
+                else payload[beId] = raw;
+            });
+            Object.entries(CHECK_FIELD_MAP).forEach(([feId, beId]) => {
+                payload[beId] = document.getElementById('f_' + feId).checked;
+            });
+            payload.extractionConfidence = pendingConfidence || (entries[hourSelect.value] && entries[hourSelect.value].extractionConfidence) || null;
+            return payload;
+        }
+
+        function num(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+
+        function recalc() {
+            const pn = num(document.getElementById('f_pn').value);
+            const rt = num(document.getElementById('f_rtfeeds').value);
+            const iv1 = num(document.getElementById('f_iv1').value);
+            const iv2 = num(document.getElementById('f_iv2').value);
+            const totalIn = pn + rt + iv1 + iv2;
+            document.getElementById('calcInput').textContent = totalIn + ' ml';
+
+            const drains = num(document.getElementById('f_drains').value);
+            const urine = num(document.getElementById('f_urine').value);
+            const totalOut = drains + urine;
+            document.getElementById('calcOutput').textContent = totalOut + ' ml';
+
+            const eye = document.getElementById('f_eye').value, motor = document.getElementById('f_motor').value, verbal = document.getElementById('f_verbal').value;
+            const total = (eye && motor && verbal) ? (parseInt(eye) + parseInt(motor) + parseInt(verbal)) : null;
+            document.getElementById('calcGcs').textContent = total ? total + ' / 15' : '—';
+        }
+
+        ['f_pn', 'f_rtfeeds', 'f_iv1', 'f_iv2', 'f_drains', 'f_urine', 'f_eye', 'f_motor', 'f_verbal'].forEach(id => {
+            document.getElementById(id).addEventListener('input', recalc);
+        });
+
+        /* ---------- SAVE / DELETE ---------- */
+        document.getElementById('entryForm').addEventListener('submit', e => e.preventDefault());
+
+        document.getElementById('saveEntryBtn').addEventListener('click', async () => {
+            if (!validateForm()) {
+                showToast('⚠️ Please fix validation errors');
+                return;
+            }
+            if (!currentPatient) {
+                showToast('No patient selected');
+                return;
+            }
+            const hour = hourSelect.value;
+            if (isEntryLocked(entries[hour])) {
+                showToast('Entry is locked (24h+). Cannot modify.');
+                return;
+            }
+            const saveBtn = document.getElementById('saveEntryBtn');
+            saveBtn.disabled = true; saveBtn.textContent = 'Saving...';
+            try {
+                const res = await fetch('/api/HourlyVitals/confirm', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(readForm())
+                });
+                if (res.status === 200) {
+                    entries[hour] = await res.json();
+                    showToast(`✓ Saved entry for ${hour}`);
+                    closeDrawer();
+                    renderAll();
+                } else if (res.status === 404) {
+                    showToast('Patient not found on server.');
+                } else {
+                    console.error(await res.text());
+                    showToast('Could not save entry.');
+                }
+            } catch (err) {
+                showToast('Could not reach the server.');
+            } finally {
+                saveBtn.disabled = false; saveBtn.textContent = 'Save entry';
+            }
+        });
+
+        deleteBtn.addEventListener('click', () => {
+            if (!editingHour) return;
+            const entry = entries[editingHour];
+            if (isEntryLocked(entry)) {
+                showToast('Entry is locked (24h+). Cannot delete.');
+                return;
+            }
+            pendingDelete = editingHour;
+            document.getElementById('deleteModal').classList.add('open');
+        });
+
+        document.getElementById('cancelDeleteBtn').addEventListener('click', () => {
+            document.getElementById('deleteModal').classList.remove('open');
+            pendingDelete = null;
+        });
+
+        document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+            if (!pendingDelete) return;
+            const hour = pendingDelete;
+            const entry = entries[hour];
+            try {
+                if (entry && entry.entryId) {
+                    const res = await fetch(`/api/HourlyVitals/${entry.entryId}`, { method: 'DELETE' });
+                    if (res.status === 204 || res.status === 200 || res.status === 404) {
+                        delete entries[hour];
+                        showToast(`✓ Deleted entry for ${hour}`);
+                    } else {
+                        showToast('Could not delete entry.');
+                    }
+                } else {
+                    delete entries[hour];
+                }
+            } catch (err) {
+                showToast('Could not reach the server.');
+            }
+            document.getElementById('deleteModal').classList.remove('open');
+            closeDrawer();
+            renderAll();
+            pendingDelete = null;
+        });
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            clearTimeout(showToast._tm);
+            showToast._tm = setTimeout(() => t.classList.remove('show'), 2500);
+        }
+
+        /* ---------- TAB SWITCHING ---------- */
+        document.getElementById('tabbar').addEventListener('click', e => {
+            const tab = e.target.closest('.tab');
+            if (!tab) return;
+            document.querySelectorAll('.tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); t.setAttribute('tabindex', '-1'); });
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            tab.classList.add('active');
+            tab.setAttribute('aria-selected', 'true');
+            tab.setAttribute('tabindex', '0');
+            document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+        });
+
+        document.getElementById('tabbar').addEventListener('keydown', e => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                const currentTab = document.querySelector('.tab.active');
+                const tabs = [...document.querySelectorAll('.tab')];
+                const idx = tabs.indexOf(currentTab);
+                const newIdx = e.key === 'ArrowRight' ? (idx + 1) % tabs.length : (idx - 1 + tabs.length) % tabs.length;
+                tabs[newIdx].click();
+                tabs[newIdx].focus();
+            }
+        });
+
+        /* ---------- RENDERING: CARDS ---------- */
+        function renderCards(el, items) {
+            document.getElementById(el).innerHTML = items.map(c => `
+            <div class="card ${c.flag || ''}" role="listitem"><div class="label">${c.label}</div>
+              <div class="value">${c.value}<span class="unit">${c.unit || ''}</span></div></div>`).join('');
+        }
+
+        let charts = {};
+        function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+        Chart.defaults.font.family = "Inter, sans-serif";
+        Chart.defaults.font.size = 11;
+        Chart.defaults.color = "#556173";
+        function baseOpts() {
+            return {
+                responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { position: 'bottom', align: 'start', labels: { boxWidth: 8, boxHeight: 8, padding: 18, usePointStyle: true } }, tooltip: { backgroundColor: '#0D0E10', padding: 10, cornerRadius: 10 } },
+                scales: { x: { border: { display: false }, grid: { display: false } }, y: { grid: { color: '#E9EDF3' } } }
+            };
+        }
+
+        function renderAll() {
+            const list = orderedEntries();
+            const labels = list.map(e => e.hour);
+            const has = list.length > 0;
+
+            // Check if any entries are locked
+            const anyLocked = list.some(e => isEntryLocked(e));
+            document.querySelectorAll('[id$="GridBox"]').forEach(el => {
+                if (anyLocked) el.classList.add('locked');
+                else el.classList.remove('locked');
+            });
+
+            /* --- vitals --- */
+            const lastV = has ? list[list.length - 1] : null;
+            renderCards('vitalsCards', [
+                { label: 'Heart rate (last)', value: lastV?.heartRate || '—', unit: lastV?.heartRate ? 'bpm' : '' },
+                { label: 'SpO2', value: lastV?.spO2 || '—', unit: lastV?.spO2 ? '%' : '' },
+                { label: 'Temp', value: lastV?.temperature || '—', unit: lastV?.temperature ? '°F' : '' },
+                { label: 'NIBP / MAP', value: lastV ? `${lastV.nibpSystolic || '—'}/${lastV.nibpDiastolic || '—'}` : '—', unit: lastV?.map ? `MAP ${lastV.map}` : '' },
+            ]);
+            destroyChart('vitalsChart');
+            charts.vitalsChart = new Chart(document.getElementById('vitalsChart'), {
+                type: 'line',
+                data: {
+                    labels, datasets: [
+                        { label: 'Heart rate', data: list.map(e => num(e.heartRate)), borderColor: '#E5484D', backgroundColor: '#E5484D', tension: .3, pointRadius: 2, borderWidth: 2 },
+                        { label: 'Resp. rate', data: list.map(e => num(e.respiratoryRate)), borderColor: '#1FA971', backgroundColor: '#1FA971', tension: .3, pointRadius: 2, borderWidth: 2 },
+                    ]
+                }, options: { ...baseOpts(), scales: { x: { border: { display: false }, grid: { display: false } }, y: { border: { display: false }, min: 0, max: 100, grid: { color: '#E9EDF3' } } } }
+            });
+            destroyChart('spo2Chart');
+            charts.spo2Chart = new Chart(document.getElementById('spo2Chart'), {
+                type: 'line',
+                data: {
+                    labels, datasets: [
+                        { label: 'SpO2', data: list.map(e => num(e.spO2)), borderColor: '#2F6FDE', backgroundColor: '#2F6FDE', tension: .3, pointRadius: 2, borderWidth: 2 },
+                        { label: 'MAP', data: list.map(e => num(e.map)), borderColor: '#E08A00', backgroundColor: '#E08A00', tension: .3, pointRadius: 2, borderWidth: 2 },
+                    ]
+                }, options: { ...baseOpts(), scales: { x: { border: { display: false }, grid: { display: false } }, y: { border: { display: false }, min: 40, max: 150, grid: { color: '#E9EDF3' } } } }
+            });
+
+            buildTable('vitalsTable', list, [
+                { label: 'Temp (°F)', get: e => e.temperature || '—', key: 'temp' },
+                { label: 'HR', get: e => e.heartRate || '—', key: 'hr' },
+                { label: 'RR', get: e => e.respiratoryRate || '—', key: 'rr' },
+                { label: 'NIBP', get: e => `${e.nibpSystolic || '—'}/${e.nibpDiastolic || '—'}` },
+                { label: 'MAP', get: e => e.map || '—' },
+                { label: 'SpO2', get: e => e.spO2 || '—', key: 'spo2' },
+            ], (key, v) => (key === 'spo2' && v && (num(v) < 94 || num(v) > 100)) || (key === 'hr' && v && (num(v) < 60 || num(v) > 110)));
+
+            /* --- fluid --- */
+            const totalIn = list.reduce((a, e) => a + num(e.parenteralNutrition) + num(e.rtFeeds) + num(e.iv1) + num(e.iv2), 0);
+            const totalOut = list.reduce((a, e) => a + num(e.drains) + num(e.urine), 0);
+            renderCards('fluidCards', [
+                { label: 'Total input (recorded)', value: totalIn, unit: 'ml' },
+                { label: 'Total urine output', value: list.reduce((a, e) => a + num(e.urine), 0), unit: 'ml' },
+                { label: 'Net balance', value: (totalIn - totalOut >= 0 ? '+' : '') + (totalIn - totalOut), unit: 'ml', flag: Math.abs(totalIn - totalOut) > 800 ? 'flag-warn' : '' },
+                { label: 'Hours recorded', value: list.length, unit: '/ 24' },
+            ]);
+            destroyChart('fluidChart');
+            charts.fluidChart = new Chart(document.getElementById('fluidChart'), {
+                type: 'bar',
+                data: {
+                    labels, datasets: [
+                        { label: 'Input (ml)', data: list.map(e => num(e.parenteralNutrition) + num(e.rtFeeds) + num(e.iv1) + num(e.iv2)), backgroundColor: '#2F6FDE', borderRadius: 6 },
+                        { label: 'Urine output (ml)', data: list.map(e => num(e.urine)), backgroundColor: '#E08A00', borderRadius: 6 },
+                    ]
+                }, options: { ...baseOpts(), scales: { y: { border: { display: false }, min: 0, max: Math.max(totalIn, totalOut, 100), grid: { color: '#E9EDF3' } } } }
+            });
+            buildTable('fluidTable', list, [
+                { label: 'Parenteral nutrition', get: e => e.parenteralNutrition || '0' },
+                { label: 'RT feeds', get: e => e.rtFeeds || '0' },
+                { label: 'IV fluids (line 1)', get: e => e.iv1 || '0' },
+                { label: 'IV fluids (line 2)', get: e => e.iv2 || '0' },
+                { label: 'Drains', get: e => e.drains || '0' },
+                { label: 'Stool', get: e => e.stool || '—' },
+                { label: 'Urine', get: e => e.urine || '0' },
+            ]);
+
+            /* --- ventilator --- */
+            renderCards('ventCards', [
+                { label: 'Latest mode', value: lastV?.ventMode || 'Not recorded' },
+                { label: 'FiO2', value: lastV?.fio2 || '—' },
+                { label: 'Latest SpO2', value: lastV?.ventSpo2 || lastV?.spO2 || '—', unit: (lastV?.ventSpo2 || lastV?.spO2) ? '%' : '' },
+            ]);
+            buildTable('ventTable', list, [
+                { label: 'Mode', get: e => e.ventMode || '—' },
+                { label: 'FiO2', get: e => e.fio2 || '—' },
+                { label: 'Rate (set/spont)', get: e => `${e.rateSet || '—'}/${e.rateSpont || '—'}` },
+                { label: 'Tidal vol (set/spont)', get: e => `${e.tidalSet || '—'}/${e.tidalSpont || '—'}` },
+                { label: 'Min vol (set/spont)', get: e => `${e.minVolSet || '—'}/${e.minVolSpont || '—'}` },
+                { label: 'PC', get: e => e.pc || '—' }, { label: 'PEEP', get: e => e.peep || '—' }, { label: 'PS', get: e => e.ps || '—' }, { label: 'PIP', get: e => e.pip || '—' },
+                { label: 'SpO2', get: e => e.ventSpo2 || '—' }, { label: 'EtCO2', get: e => e.etco2 || '—' }, { label: 'ABG', get: e => e.abg || '—' },
+            ]);
+
+            /* --- GCS --- */
+            const gcsTotal = (e) => (e.gcsEye && e.gcsMotor && e.gcsVerbal) ? (num(e.gcsEye) + num(e.gcsMotor) + num(e.gcsVerbal)) : null;
+            renderCards('gcsCards', [
+                { label: 'GCS total (last)', value: lastV ? (gcsTotal(lastV) ?? '—') : '—', unit: lastV && gcsTotal(lastV) ? '/ 15' : '' },
+                { label: 'Pupils R / L', value: lastV ? `${lastV.pupilR || '—'} / ${lastV.pupilL || '—'}` : '—' },
+                { label: 'Motor movement', value: lastV ? [lastV.motorUpperR && 'UL-R', lastV.motorUpperL && 'UL-L', lastV.motorLowerR && 'LL-R', lastV.motorLowerL && 'LL-L'].filter(Boolean).join(', ') || 'None ticked' : '—' },
+            ]);
+            destroyChart('gcsChart');
+            charts.gcsChart = new Chart(document.getElementById('gcsChart'), {
+                type: 'line',
+                data: { labels, datasets: [{ label: 'GCS total', data: list.map(e => gcsTotal(e)), borderColor: '#7C5CE0', backgroundColor: '#7C5CE0', stepped: true, pointRadius: 3, borderWidth: 2, spanGaps: true }] },
+                options: { ...baseOpts(), scales: { x: { border: { display: false }, grid: { display: false } }, y: { border: { display: false }, min: 3, max: 15, ticks: { stepSize: 1 }, grid: { color: '#E9EDF3' } } } }
+            });
+            buildTable('gcsTable', list, [
+                { label: 'Eye', get: e => e.gcsEye || '—' }, { label: 'Motor', get: e => e.gcsMotor || '—' }, { label: 'Verbal', get: e => e.gcsVerbal || '—' },
+                { label: 'Total', get: e => gcsTotal(e) ?? '—' },
+                { label: 'Motor movement', get: e => [e.motorUpperR && 'UL-R', e.motorUpperL && 'UL-L', e.motorLowerR && 'LL-R', e.motorLowerL && 'LL-L'].filter(Boolean).join(', ') || '—' },
+                { label: 'Pupil R', get: e => e.pupilR || '—' }, { label: 'Pupil L', get: e => e.pupilL || '—' },
+            ]);
+
+            /* --- drugs --- */
+            buildTable('drugsTable', list, [
+                { label: 'Adrenaline (start/inf)', get: e => `${e.adrenalineStarted || '—'}/${e.adrenalineInfused || '—'}` },
+                { label: 'Nor-adrenaline (start/inf)', get: e => `${e.noradrenalineStarted || '—'}/${e.noradrenalineInfused || '—'}` },
+                { label: 'Dopamine (start/inf)', get: e => `${e.dopamineStarted || '—'}/${e.dopamineInfused || '—'}` },
+                { label: 'Dobutamine (start/inf)', get: e => `${e.dobutamineStarted || '—'}/${e.dobutamineInfused || '—'}` },
+            ]);
+        }
+
+        function buildTable(elId, list, cols, flagFn) {
+            const thead = `<thead><tr><th>Time</th>${cols.map(c => `<th>${c.label}</th>`).join('')}<th></th></tr></thead>`;
+            if (list.length === 0) {
+                document.getElementById(elId).innerHTML = thead + `<tbody><tr class="empty-row"><td colspan="${cols.length + 2}">No hourly entries recorded yet. Use "New hourly entry" to add the first one.</td></tr></tbody>`;
+                return;
+            }
+            const rows = list.map(e => {
+                const locked = isEntryLocked(e);
+                return `<tr>
+              <td>${e.hour}${locked ? ' 🔒' : ''}</td>
+              ${cols.map(c => { const v = c.get(e); const flag = flagFn && c.key && flagFn(c.key, v); return `<td class="${flag ? 'flag' : ''}">${v}</td>`; }).join('')}
+              <td class="actions"><button class="btn small ghost" onclick="openDrawer('${e.hour}')" aria-label="Edit entry for ${e.hour}">Edit</button></td>
+            </tr>`;
+            }).join('');
+            document.getElementById(elId).innerHTML = thead + `<tbody>${rows}</tbody>`;
+        }
+
+        /* ---------- INVESTIGATIONS & MEDICATION ORDERS (editable) ---------- */
+        const LABS_STORE_KEY = "icu_labs_v1";
+        const ORDERS_STORE_KEY = "icu_orders_v1";
+        const DEFAULT_LABS = [
+            { test: 'Hb%', result: '—', range: '12–16 g/dL' },
+            { test: 'PCV', result: '—', range: '36–46%' },
+            { test: 'B. urea', result: '—', range: '7–20 mg/dL' },
+            { test: 'S. creatinine', result: '—', range: '0.6–1.2 mg/dL' },
+            { test: 'Na+', result: '—', range: '135–145 mmol/L' },
+            { test: 'K+', result: '—', range: '3.5–5.0 mmol/L' },
+            { test: 'WBC', result: '—', range: '4–11 x10^9/L' },
+            { test: 'S. bilirubin', result: '—', range: '0.3–1.2 mg/dL' },
+            { test: 'Platelet count', result: '—', range: '150–450 x10^9/L' },
+            { test: 'INR', result: '—', range: '0.8–1.1' },
+        ];
+        const DEFAULT_ORDERS = [
+            { drug: 'Inj. Meropenem', dose: '500 mg', route: 'IV', frequency: 'BD', interval: '6am, 6pm' },
+            { drug: 'Inj. Pantop', dose: '40 mg', route: 'IV', frequency: 'OD', interval: '6am' },
+            { drug: 'Inj. Dolo', dose: '1 gm', route: 'IV', frequency: 'TID', interval: '6am, 2pm, 10pm' },
+            { drug: 'Tab. Sobasis', dose: '1 gm', route: 'PO', frequency: 'TID', interval: '8am, 2pm, 10pm' },
+            { drug: 'Tab. Concor', dose: '2.5 mg', route: 'PO', frequency: 'OD', interval: '8am' },
+            { drug: 'Inj. Heparin', dose: '5000 units', route: 'TIV', frequency: 'TID', interval: '6am, 2pm, 10pm' },
+        ];
+        let labsData = JSON.parse(localStorage.getItem(LABS_STORE_KEY) || 'null') || DEFAULT_LABS.map(r => ({ ...r }));
+        let ordersData = JSON.parse(localStorage.getItem(ORDERS_STORE_KEY) || 'null') || DEFAULT_ORDERS.map(r => ({ ...r }));
+
+        const LABS_FIELDS = [
+            { key: 'test', label: 'Test', placeholder: 'e.g. Hb%' },
+            { key: 'result', label: 'Result', placeholder: 'e.g. 11.2' },
+            { key: 'range', label: 'Reference range', placeholder: 'e.g. 12–16 g/dL' },
+        ];
+        const ORDERS_FIELDS = [
+            { key: 'drug', label: 'Drug', placeholder: 'e.g. Inj. Meropenem' },
+            { key: 'dose', label: 'Dose', placeholder: 'e.g. 500 mg' },
+            { key: 'route', label: 'Route', placeholder: 'e.g. IV' },
+            { key: 'frequency', label: 'Frequency', placeholder: 'e.g. BD' },
+            { key: 'interval', label: 'Time interval', placeholder: 'e.g. 6am, 6pm' },
+        ];
+
+        function renderLabsTable() {
+            document.getElementById('labsTable').innerHTML = `
+            <thead><tr><th>Test</th><th>Result</th><th>Reference range</th></tr></thead>
+            <tbody>${labsData.map(r => `<tr><td>${r.test || '—'}</td><td>${r.result || '—'}</td><td>${r.range || '—'}</td></tr>`).join('')}</tbody>`;
+        }
+
+        function renderOrdersTable() {
+            document.getElementById('ordersTable').innerHTML = `
+            <thead><tr><th>Drug</th><th>Dose</th><th>Route</th><th>Frequency</th><th>Time interval</th></tr></thead>
+            <tbody>${ordersData.map(r => `<tr><td>${r.drug || '—'}</td><td>${r.dose || '—'}</td><td>${r.route || '—'}</td><td>${r.frequency || '—'}</td><td>${r.interval || '—'}</td></tr>`).join('')}</tbody>`;
+        }
+
+        /* ---------- EDIT TABLE MODAL (shared by labs & orders) ---------- */
+        const editTableModal = document.getElementById('editTableModal');
+        const editTableTitle = document.getElementById('editTableTitle');
+        const editTableBody = document.getElementById('editTableBody');
+        let editTableType = null; // 'labs' | 'orders'
+
+        function fieldsFor(type) { return type === 'labs' ? LABS_FIELDS : ORDERS_FIELDS; }
+        function dataFor(type) { return type === 'labs' ? labsData : ordersData; }
+
+        function editRowHtml(fields, row) {
+            row = row || {};
+            return `<div class="edit-table-row">
+            ${fields.map(f => `<input type="text" data-field="${f.key}" placeholder="${f.label}" value="${(row[f.key] || '').toString().replace(/"/g, '&quot;')}" aria-label="${f.label}">`).join('')}
+            <button type="button" class="removeRowBtn" aria-label="Remove row">&times;</button>
+          </div>`;
+        }
+
+        function openEditTable(type) {
+            editTableType = type;
+            const fields = fieldsFor(type);
+            const data = dataFor(type);
+            editTableTitle.textContent = type === 'labs' ? 'Edit investigations' : 'Edit medication orders';
+            editTableBody.innerHTML = data.map(row => editRowHtml(fields, row)).join('');
+            editTableModal.classList.add('open');
+        }
+
+        function closeEditTable() {
+            editTableModal.classList.remove('open');
+            editTableType = null;
+        }
+
+        editTableBody.addEventListener('click', e => {
+            if (e.target.classList.contains('removeRowBtn')) {
+                e.target.closest('.edit-table-row').remove();
+            }
+        });
+
+        document.getElementById('addEditRowBtn').addEventListener('click', () => {
+            const fields = fieldsFor(editTableType);
+            editTableBody.insertAdjacentHTML('beforeend', editRowHtml(fields, {}));
+            editTableBody.lastElementChild.querySelector('input').focus();
+        });
+
+        document.getElementById('saveEditTableBtn').addEventListener('click', () => {
+            const fields = fieldsFor(editTableType);
+            const rows = [...editTableBody.querySelectorAll('.edit-table-row')].map(rowEl => {
+                const row = {};
+                fields.forEach(f => { row[f.key] = rowEl.querySelector(`input[data-field="${f.key}"]`).value.trim(); });
+                return row;
+            }).filter(row => Object.values(row).some(v => v !== ''));
+
+            if (editTableType === 'labs') {
+                labsData = rows;
+                localStorage.setItem(LABS_STORE_KEY, JSON.stringify(labsData));
+                renderLabsTable();
+            } else {
+                ordersData = rows;
+                localStorage.setItem(ORDERS_STORE_KEY, JSON.stringify(ordersData));
+                renderOrdersTable();
+            }
+            showToast('✓ Changes saved');
+            closeEditTable();
+        });
+
+        document.getElementById('cancelEditTableBtn').addEventListener('click', closeEditTable);
+        editTableModal.addEventListener('click', e => { if (e.target === editTableModal) closeEditTable(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && editTableModal.classList.contains('open')) closeEditTable(); });
+
+        document.getElementById('editLabsBtn').addEventListener('click', () => openEditTable('labs'));
+        document.getElementById('editOrdersBtn').addEventListener('click', () => openEditTable('orders'));
+
+        renderLabsTable();
+        renderOrdersTable();
+
+        /* ---------- EXPORT / PRINT ---------- */
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            const list = orderedEntries();
+            if (list.length === 0) {
+                showToast('No entries to export');
+                return;
+            }
+
+            let csv = 'Hour,Temp(F),HR(bpm),RR(/min),SpO2(%),NIBP Sys/Dia,MAP,Input(ml),Output(ml),GCS\n';
+            list.forEach(e => {
+                const input = num(e.parenteralNutrition) + num(e.rtFeeds) + num(e.iv1) + num(e.iv2);
+                const output = num(e.drains) + num(e.urine);
+                const gcs = (e.gcsEye && e.gcsMotor && e.gcsVerbal) ? (parseInt(e.gcsEye) + parseInt(e.gcsMotor) + parseInt(e.gcsVerbal)) : '';
+                csv += `${e.hour},"${e.temperature ?? ''}","${e.heartRate ?? ''}","${e.respiratoryRate ?? ''}","${e.spO2 ?? ''}","${e.nibpSystolic ?? ''}/${e.nibpDiastolic ?? ''}","${e.map ?? ''}","${input}","${output}","${gcs}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ICU_Dashboard_${currentDate}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('✓ Data exported');
+        });
+
+        document.getElementById('printBtn').addEventListener('click', () => {
+            window.print();
+        });
+
+        /* ---------- DATE SELECTOR ---------- */
+        document.getElementById('dateSelect').addEventListener('change', (e) => {
+            currentDate = e.target.value;
+            loadEntriesForDate(currentDate);
+        });
+
+        loadPatient();
+    </script>
+
+    <script>
+        /* presentation only: shows the patient's initials in the header avatar */
+        (function () {
+            var nameEl = document.getElementById('patientHeaderName');
+            var av = document.getElementById('patientAvatar');
+            if (!nameEl || !av) return;
+            var fallback = av.innerHTML;
+            function sync() {
+                var n = (typeof currentPatient !== 'undefined' && currentPatient && currentPatient.fullName) ? String(currentPatient.fullName).trim() : '';
+                var parts = n.split(/\s+/).filter(Boolean);
+                if (!parts.length) { av.innerHTML = fallback; return; }
+                av.textContent = (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+            }
+            new MutationObserver(sync).observe(nameEl, { childList: true, characterData: true, subtree: true });
+            sync();
+        })();
+    </script>
+
+</body>
+</html>

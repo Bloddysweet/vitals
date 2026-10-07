@@ -1,0 +1,42 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+
+# Visual Studio / Rider / VS Code
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# .NET
+project.lock.json
+project.fragment.lock.json
+*.dll
+*.exe
+*.pdb
+*.cache
+*.log
+*.tlog
+
+# Secrets — never commit; use `dotnet user-secrets` or env vars
+appsettings.*.local.json
+*.pfx
+secrets.json
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+
+# Node (if a frontend toolchain is added later)
+node_modules/
+
+# Uploaded source archives (contents are extracted into the repo)
+*.zip
