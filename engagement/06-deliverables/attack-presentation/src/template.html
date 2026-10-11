@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ATTACKER'S PERSPECTIVE — narayanagroup.co.in | Security Assessment Debrief</title>
+<style>
+/* ============================================================
+   RESET / BASE
+   ============================================================ */
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:#000}
+body{
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+               "DejaVu Sans Mono", "Liberation Mono", monospace;
+  color:#c8d6e5; -webkit-font-smoothing:antialiased;
+}
+
+/* ============================================================
+   STAGE + SCALING (works on any projector / laptop)
+   ============================================================ */
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  background:
+    radial-gradient(1200px 700px at 50% -10%, #0b1620 0%, #05070a 60%, #000 100%);}
+#deck{
+  position:relative;width:1280px;height:720px;flex:0 0 auto;
+  transform-origin:center center;
+  background:linear-gradient(180deg,#06090d 0%,#05070a 100%);
+  border:1px solid #12202b; border-radius:10px;
+  box-shadow:0 0 0 1px #0c141c, 0 40px 120px rgba(0,0,0,.9),
+             inset 0 0 120px rgba(0,255,156,.02);
+  overflow:hidden;
+}
+#deck::before{
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:.35;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0 1px,transparent 1px 3px);
+}
+
+/* ============================================================
+   SLIDES
+   ============================================================ */
+.slide{
+  position:absolute;inset:0;padding:44px 56px;display:none;
+  flex-direction:column;justify-content:flex-start;
+  opacity:0;transition:opacity .18s ease;overflow:hidden;
+}
+.slide.active{display:flex;opacity:1}
+.inner{
+  width:100%;flex:0 0 auto;display:flex;flex-direction:column;
+  transform-origin:top center;transform:scale(var(--fit,1));
+}
+
+/* ---------- kicker / section label ---------- */
+.kicker{
+  font-size:11.5px;letter-spacing:.28em;text-transform:uppercase;
+  color:#00ff9c;margin-bottom:10px;display:flex;align-items:center;gap:10px;
+}
+.kicker .bar{width:26px;height:2px;background:#00ff9c;box-shadow:0 0 8px #00ff9c}
+.kicker.warn{color:#ffb020} .kicker.warn .bar{background:#ffb020;box-shadow:0 0 8px #ffb020}
+.kicker.bad{color:#ff2d55}  .kicker.bad  .bar{background:#ff2d55;box-shadow:0 0 8px #ff2d55}
+.kicker.info{color:#22d3ee} .kicker.info .bar{background:#22d3ee;box-shadow:0 0 8px #22d3ee}
+
+/* ---------- headings ---------- */
+h1{font-size:58px;line-height:1.06;font-weight:800;letter-spacing:-.02em;
+   color:#eaf6f0;margin-bottom:14px}
+h2{font-size:34px;line-height:1.14;font-weight:700;letter-spacing:-.01em;
+   color:#eaf6f0;margin-bottom:16px}
+h3{font-size:20px;line-height:1.25;font-weight:700;color:#dff3ec;margin-bottom:8px}
+.sub{font-size:16px;line-height:1.55;color:#7f93a6;max-width:1020px}
+.tiny{font-size:12.5px;line-height:1.5;color:#5d7185}
+
+/* ---------- title slide ---------- */
+.slide.title{justify-content:center;align-items:stretch}
+.slide.title h1{font-size:76px;line-height:1.02;margin-bottom:8px}
+.slide.title .rule{width:100%;height:3px;margin:20px 0 22px;
+  background:linear-gradient(90deg,#00ff9c,#22d3ee 40%,transparent)}
+.title-meta{display:flex;gap:38px;margin-top:26px;font-size:13px;color:#6d8497}
+.title-meta b{display:block;color:#c8d6e5;font-size:15px;margin-top:3px}
+.glitch{color:#00ff9c;text-shadow:0 0 18px rgba(0,255,156,.45)}
+
+/* ---------- section divider ---------- */
+.slide.divider{justify-content:center;align-items:center;text-align:center}
+.slide.divider .num{
+  font-size:120px;font-weight:800;color:#0e1a22;line-height:1;
+  letter-spacing:-.05em;margin-bottom:-16px}
+.slide.divider h1{font-size:60px;margin-bottom:10px}
+.slide.divider .sub{text-align:center;max-width:840px}
+
+/* ============================================================
+   TERMINAL BLOCKS
+   ============================================================ */
+.term{
+  background:#070c11;border:1px solid #16252f;border-left:3px solid #00ff9c;
+  border-radius:6px;padding:12px 14px;font-size:12.6px;line-height:1.52;
+  color:#9fb3c4;white-space:pre-wrap;word-break:break-word;
+  box-shadow:0 14px 40px rgba(0,0,0,.6), inset 0 0 60px rgba(0,255,156,.015);
+}
+.term.red{border-left-color:#ff2d55}
+.term.amber{border-left-color:#ffb020}
+.term.cyan{border-left-color:#22d3ee}
+.term.dim{border-left-color:#33465a}
+.term .ln{display:block;opacity:0}
+.term.on .ln{opacity:1}
+.term .cmd{color:#00ff9c;font-weight:700}
+.term .out{color:#8fa6b8}
+.term .note{color:#4f6474;font-style:italic}
+.term .k{color:#22d3ee}
+.term .s{color:#ffb020}
+.term .n{color:#c792ea}
+.term .bad{color:#ff2d55;font-weight:700}
+.term .good{color:#00ff9c;font-weight:700}
+.term .hl{background:rgba(255,45,85,.14);color:#ff8fa5;padding:0 3px;border-radius:2px}
+.term .arrow{color:#ff2d55;font-weight:700}
+.term .px{color:#eaf6f0}
+.term.cur .ln:last-child::after{
+  content:"\2588";color:#00ff9c;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* terminal window chrome */
+.win{border:1px solid #16252f;border-radius:8px;overflow:hidden;
+  box-shadow:0 18px 50px rgba(0,0,0,.55)}
+.win .bar{display:flex;align-items:center;gap:7px;padding:7px 11px;
+  background:#0b141c;border-bottom:1px solid #16252f;font-size:11px;color:#5d7185}
+.win .bar i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.win .bar i.r{background:#ff5f57} .win .bar i.y{background:#febc2e} .win .bar i.g{background:#28c840}
+.win .bar span{margin-left:8px;letter-spacing:.06em}
+.win .term{border:none;border-left:none;border-radius:0;box-shadow:none}
+
+/* ============================================================
+   LISTS
+   ============================================================ */
+ul.b,ol.b{list-style:none;margin-top:6px}
+ul.b li,ol.b li{
+  position:relative;padding-left:22px;margin-bottom:9px;font-size:15px;
+  line-height:1.5;color:#a9bccd}
+ul.b li::before{
+  content:"\25B8";position:absolute;left:0;color:#00ff9c;font-size:14px;top:1px}
+ol.b{counter-reset:x}
+ol.b li{padding-left:30px;counter-increment:x}
+ol.b li::before{
+  content:counter(x);position:absolute;left:0;top:0;width:20px;height:20px;
+  border:1px solid #1f3a4a;border-radius:4px;color:#00ff9c;font-size:11px;
+  display:flex;align-items:center;justify-content:center;font-weight:700}
+ul.b li b,ol.b li b{color:#eaf6f0}
+ul.b li em,ol.b li em{color:#ffb020;font-style:normal}
+ul.b.small li,ol.b.small li{font-size:13.5px;margin-bottom:6px}
+ul.b li.ok::before{content:"\2713";color:#00ff9c}
+ul.b li.no::before{content:"\2717";color:#ff2d55}
+ul.b li.warnx::before{content:"!";color:#ffb020;font-weight:800}
+
+/* ============================================================
+   LAYOUT HELPERS
+   ============================================================ */
+.row{display:flex;gap:22px;flex:1;min-height:0}
+.col{flex:1;min-width:0;display:flex;flex-direction:column}
+.col.narrow{flex:0 0 300px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.stack{display:flex;flex-direction:column;gap:12px;flex:1;min-height:0}
+.mt{margin-top:14px} .mt2{margin-top:22px} .mb{margin-bottom:12px}
+.spacer{flex:1}
+.center{justify-content:center}
+
+/* cards */
+.card{background:#080e14;border:1px solid #16252f;border-radius:8px;padding:14px 16px}
+.card h4{font-size:13px;letter-spacing:.14em;text-transform:uppercase;
+  color:#00ff9c;margin-bottom:8px}
+.card.red h4{color:#ff2d55} .card.amber h4{color:#ffb020}
+.card.cyan h4{color:#22d3ee} .card.grey h4{color:#7f93a6}
+.card p,.card li{font-size:13.2px;line-height:1.5;color:#9fb3c4}
+.card.big{display:flex;flex-direction:column;justify-content:center;text-align:center}
+.card.big .n{font-size:46px;font-weight:800;line-height:1;color:#eaf6f0}
+.card.big .l{font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:#5d7185;margin-top:8px}
+.card.big.red .n{color:#ff2d55} .card.big.amber .n{color:#ffb020}
+.card.big.green .n{color:#00ff9c} .card.big.cyan .n{color:#22d3ee}
+
+/* severity badge */
+.sev{display:inline-block;padding:3px 10px;border-radius:4px;font-size:11px;
+  font-weight:800;letter-spacing:.12em;border:1px solid}
+.sev.CRITICAL{color:#ff2d55;border-color:#ff2d55;background:rgba(255,45,85,.1)}
+.sev.HIGH{color:#ff8c1a;border-color:#ff8c1a;background:rgba(255,140,26,.1)}
+.sev.MEDIUM{color:#ffb020;border-color:#ffb020;background:rgba(255,176,32,.1)}
+.sev.LOW{color:#00ff9c;border-color:#00ff9c;background:rgba(0,255,156,.08)}
+.fid{font-size:12px;color:#5d7185;letter-spacing:.1em}
+
+/* tables */
+table.d{width:100%;border-collapse:collapse;font-size:13px}
+table.d th{
+  text-align:left;padding:8px 10px;background:#0c151d;color:#00ff9c;
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  border-bottom:1px solid #1b2c38}
+table.d td{padding:7px 10px;border-bottom:1px solid #101c25;color:#9fb3c4;
+  vertical-align:top;line-height:1.42}
+table.d tr:nth-child(even) td{background:rgba(255,255,255,.014)}
+table.d td b{color:#eaf6f0}
+table.d td.red{color:#ff2d55;font-weight:700}
+table.d td.amber{color:#ffb020}
+table.d td.green{color:#00ff9c}
+table.d.sm{font-size:12px}
+table.d.sm td,table.d.sm th{padding:5px 8px}
+
+/* ============================================================
+   ATTACK CHAIN DIAGRAM
+   ============================================================ */
+.chain{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;margin-top:6px}
+.node{
+  flex:1;min-width:150px;background:#080e14;border:1px solid #1b2c38;
+  border-radius:7px;padding:11px 13px;position:relative}
+.node .step{font-size:10px;letter-spacing:.16em;color:#22d3ee;margin-bottom:5px}
+.node .t{font-size:13.5px;color:#eaf6f0;font-weight:700;line-height:1.3;margin-bottom:4px}
+.node .d{font-size:11.5px;color:#6d8497;line-height:1.4}
+.node.hot{border-color:#ff2d55;background:rgba(255,45,85,.06)}
+.node.hot .step{color:#ff2d55}
+.node.goal{border-color:#00ff9c;background:rgba(0,255,156,.06)}
+.node.goal .step{color:#00ff9c}
+.arrowx{display:flex;align-items:center;padding:0 9px;color:#2c4557;font-size:22px}
+.chain.v{flex-direction:column;gap:9px}
+.chain.v .arrowx{padding:0;justify-content:center;height:16px;transform:rotate(90deg)}
+
+/* flow steps (numbered horizontal) */
+.flow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.flow .f{
+  flex:1;min-width:120px;border:1px solid #1b2c38;border-radius:6px;
+  padding:9px 11px;background:#080e14}
+.flow .f .no{font-size:10px;color:#00ff9c;letter-spacing:.14em}
+.flow .f .tx{font-size:12.5px;color:#dff3ec;margin-top:3px;line-height:1.35}
+.flow .f.crit{border-color:#ff2d55;background:rgba(255,45,85,.07)}
+.flow .f.crit .no{color:#ff2d55}
+
+/* code inline */
+code{
+  background:#0c151d;border:1px solid #1b2c38;border-radius:3px;
+  padding:1px 5px;font-size:12.5px;color:#22d3ee}
+
+/* callout */
+.callout{
+  border-left:3px solid #00ff9c;background:rgba(0,255,156,.05);
+  padding:11px 15px;border-radius:0 6px 6px 0;font-size:14px;line-height:1.55;
+  color:#c3d5e3;margin-top:12px}
+.callout.red{border-color:#ff2d55;background:rgba(255,45,85,.07)}
+.callout.amber{border-color:#ffb020;background:rgba(255,176,32,.06)}
+.callout.cyan{border-color:#22d3ee;background:rgba(34,211,238,.06)}
+.callout b{color:#fff}
+
+/* impact meter */
+.meter{margin-top:8px}
+.meter .lbl{display:flex;justify-content:space-between;font-size:11px;
+  color:#5d7185;margin-bottom:4px;letter-spacing:.1em;text-transform:uppercase}
+.meter .track{height:7px;background:#0c151d;border-radius:4px;overflow:hidden;
+  border:1px solid #16252f}
+.meter .fill{height:100%;border-radius:4px}
+.fill.red{background:linear-gradient(90deg,#ff2d55,#ff6b8a)}
+.fill.amber{background:linear-gradient(90deg,#ff8c1a,#ffb020)}
+.fill.cyan{background:linear-gradient(90deg,#0ea5e9,#22d3ee)}
+
+/* ============================================================
+   CHROME: progress, counter, help, notes
+   ============================================================ */
+#prog{position:absolute;left:0;bottom:0;height:3px;background:#00ff9c;
+  width:0;box-shadow:0 0 10px #00ff9c;z-index:40;transition:width .18s}
+#count{position:absolute;right:16px;bottom:12px;font-size:11px;color:#33465a;z-index:40}
+#fid{position:absolute;left:20px;bottom:12px;font-size:11px;color:#33465a;z-index:40}
+#help{position:fixed;right:14px;top:12px;font-size:11px;color:#23384a;z-index:60;
+  text-align:right;line-height:1.6;pointer-events:none}
+#notes{
+  position:fixed;left:0;right:0;bottom:0;height:210px;background:#070c11;
+  border-top:1px solid #16252f;color:#9fb3c4;font-size:13px;line-height:1.6;
+  padding:14px 22px;overflow:auto;display:none;z-index:50;white-space:pre-wrap;
+  box-shadow:0 -20px 50px rgba(0,0,0,.6)}
+#notes.on{display:block}
+#notes h5{color:#00ff9c;font-size:11px;letter-spacing:.16em;margin-bottom:6px}
+#overview{
+  position:fixed;inset:0;background:rgba(2,4,6,.97);z-index:80;display:none;
+  padding:30px;overflow:auto}
+#overview.on{display:block}
+#ovgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px}
+.ovcell{border:1px solid #16252f;border-radius:6px;padding:9px 11px;
+  background:#080e14;cursor:pointer;min-height:78px}
+.ovcell:hover{border-color:#00ff9c}
+.ovcell .i{font-size:10px;color:#33465a;margin-bottom:4px}
+.ovcell .t{font-size:11.5px;color:#9fb3c4;line-height:1.35}
+.ovcell.cur{border-color:#00ff9c;box-shadow:0 0 0 1px #00ff9c inset}
+
+/* corner brackets */
+#deck::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:
+    linear-gradient(#00ff9c,#00ff9c) left 0 top 0/22px 1px no-repeat,
+    linear-gradient(#00ff9c,#00ff9c) left 0 top 0/1px 22px no-repeat,
+    linear-gradient(#00ff9c,#00ff9c) right 0 bottom 0/22px 1px no-repeat,
+    linear-gradient(#00ff9c,#00ff9c) right 0 bottom 0/1px 22px no-repeat;
+  opacity:.5}
+</style>
+</head>
+<body>
+
+<div id="stage"><div id="deck"></div></div>
+
+<div id="prog"></div>
+<div id="fid"></div>
+<div id="count"></div>
+<div id="help">
+  &larr; &rarr; navigate &nbsp;|&nbsp; N notes &nbsp;|&nbsp; O overview<br>
+  F fullscreen &nbsp;|&nbsp; T timer &nbsp;|&nbsp; 0-9 jump to section
+</div>
+<div id="notes"></div>
+<div id="overview"><div id="ovgrid"></div></div>
+
+<script>
+/* ============================================================================
+   SLIDE DATA
+   ========================================================================== */
+/*__SLIDES__*/
+
+/* ============================================================================
+   SYNTAX HIGHLIGHTER (per line, offline)
+   ========================================================================== */
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function hl(line){
+  var t = esc(line);
+  // full-line annotated comment
+  if(/^\s*(#|\/\/)/.test(t)) return '<span class="note">'+t+'</span>';
+  // shell command
+  if(/^\s*\$\s/.test(t)){
+    return '<span class="cmd">'+t.replace(/^(\s*)(\$\s)([\s\S]*)$/,
+      function(m,a,b,c){return a+b+hlCmd(c);})+'</span>';
+  }
+  // HTTP request line / header
+  if(/^(GET|POST|PUT|DELETE|OPTIONS|HTTP\/[0-9.]+|Host:|Content-Type:|Authorization:|Location:|Server:|Set-Cookie:|X-Powered-By:|strict-transport|access-control|X-AspNet|Location)\b/i.test(t)){
+    return t.replace(/^([A-Za-z-]+:)(\s*)(.*)$/, function(m,k,sp,v){
+      return '<span class="k">'+k+'</span>'+sp+hlVal(v);
+    }).replace(/^(HTTP\/[0-9.]+ \d{3}[^<]*)$/,'<span class="px">$1</span>');
+  }
+  // JSON-ish  "key": value
+  if(/^\s*"[^"]+"\s*:/.test(t)){
+    return t.replace(/^(\s*)("[^"]+")(\s*:\s*)(.*)$/, function(m,a,k,c,v){
+      return a+'<span class="k">'+k+'</span>'+c+hlVal(v);
+    });
+  }
+  // key = value / key : value
+  if(/^\s*[A-Za-z_][\w.]*\s*[:=]\s/.test(t)){
+    return t.replace(/^(\s*)([A-Za-z_][\w.]*)(\s*[:=]\s*)(.*)$/, function(m,a,k,c,v){
+      return a+'<span class="k">'+k+'</span>'+c+hlVal(v);
+    });
+  }
+  return hlVal(t);
+}
+function hlCmd(s){
+  s = s.replace(/("[^"]*"|'[^']*')/g,'<span class="s">$1</span>');
+  s = s.replace(/(--?[a-zA-Z][\w-]*)/g,'<span class="k">$1</span>');
+  s = s.replace(/\b(curl|dig|nmap|base64|grep|head|echo|jq|for|do|done|in|python3|wget)\b/g,
+                '<span class="n">$1</span>');
+  return s;
+}
+function hlVal(s){
+  s = s.replace(/(&quot;[^&]*&quot;|"[^"]*")/g,'<span class="s">$1</span>');
+  s = s.replace(/\b(ORA-\d+)\b/g,'<span class="bad">$1</span>');
+  s = s.replace(/\b(MOBIDB|GET_USERINFO|GET_USERATTENDANCE_LATEST)\b/g,'<span class="bad">$1</span>');
+  s = s.replace(/\b(\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?)\b/g,'<span class="n">$1</span>');
+  s = s.replace(/\b(20[0-9]|19[0-9]|30[0-9]|40[0-9]|50[0-9])\b/g,'<span class="good">$1</span>');
+  s = s.replace(/\b(403|401|500)\b/g,'<span class="bad">$1</span>');
+  s = s.replace(/(\^+)/g,'<span class="arrow">$1</span>');
+  s = s.replace(/(&lt;-[^<]*)/g,'<span class="note">$1</span>');
+  return s;
+}
+
+/* ============================================================================
+   RENDERERS
+   ========================================================================== */
+function termBlock(text, cls){
+  cls = cls||'';
+  var lines = String(text).replace(/\t/g,'    ').split('\n');
+  var html = lines.map(function(l){return '<span class="ln">'+hl(l)+'</span>';}).join('');
+  return '<div class="term '+cls+'">'+html+'</div>';
+}
+function winBlock(title, text, cls){
+  return '<div class="win"><div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i>'
+       + '<span>'+esc(title)+'</span></div>'+termBlock(text,cls)+'</div>';
+}
+function bullets(arr, cls){
+  cls = cls||'';
+  return '<ul class="b '+cls+'">'+arr.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ul>';
+}
+function steps(arr, cls){
+  cls = cls||'';
+  return '<ol class="b '+cls+'">'+arr.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ol>';
+}
+function kicker(text, tone){
+  return '<div class="kicker '+(tone||'')+'"><span class="bar"></span>'+esc(text)+'</div>';
+}
+
+/* ============================================================================
+   BUILD DECK
+   ========================================================================== */
+var deck = document.getElementById('deck');
+var html = '';
+
+SLIDES.forEach(function(s, i){
+  var body = '';
+
+  if(s.type==='title'){
+    body = kicker(s.kick||'SECURITY ASSESSMENT DEBRIEF', s.tone)
+      + '<h1>'+s.title+'</h1><div class="rule"></div>'
+      + '<div class="sub">'+s.sub+'</div>'
+      + (s.meta?'<div class="title-meta">'+s.meta.map(function(m){
+            return '<div>'+m[0]+'<b>'+m[1]+'</b></div>';}).join('')+'</div>':'');
+
+  } else if(s.type==='divider'){
+    body = '<div style="text-align:center;width:100%">'
+      + '<div class="num">'+s.num+'</div>'
+      + kicker(s.kick||'', s.tone)
+      + '<h1>'+s.title+'</h1><div class="sub">'+s.sub+'</div></div>';
+
+  } else if(s.type==='term'){
+    body = kicker(s.kick, s.tone) + '<h2>'+s.title+'</h2>'
+      + (s.sub?'<div class="sub mb">'+s.sub+'</div>':'')
+      + (s.win ? winBlock(s.win, s.code, s.cls) : termBlock(s.code, s.cls))
+      + (s.foot?'<div class="tiny mt">'+s.foot+'</div>':'');
+
+  } else if(s.type==='term2'){
+    body = kicker(s.kick, s.tone) + '<h2>'+s.title+'</h2>'
+      + (s.sub?'<div class="sub mb">'+s.sub+'</div>':'')
+      + '<div class="row">'
+      +   '<div class="col">'+ (s.h1?'<h3>'+s.h1+'</h3>':'') + termBlock(s.code1, s.cls1) +'</div>'
+      +   '<div class="col">'+ (s.h2?'<h3>'+s.h2+'</h3>':'') + termBlock(s.code2, s.cls2) +'</div>'
+      + '</div>';
+
+  } else if(s.type==='bullets'){
+    body = kicker(s.kick, s.tone) + '<h2>'+s.title+'</h2>'
+      + (s.sub?'<div class="sub mb">'+s.sub+'</div>':'')
+      + (s.steps ? steps(s.items,'') : bullets(s.items, s.small?'small':''))
+      + (s.foot?'<div class="callout '+(s.footTone||'')+' mt">'+s.foot+'</div>':'');
+
+  } else if(s.type==='split'){
+    body = kicker(s.kick, s.tone) + '<h2>'+s.title+'</h2>'
+      + '<div class="row">'
+      +   '<div class="col '+(s.lnarrow?'narrow':'')+'">'
+      +     (s.lh?'<h3>'+s.lh+'</h3>':'')
+      +     (s.lterm ? termBlock(s.lterm, s.lcls)
+              : (s.litems ? (s.lsteps?steps(s.litems):bullets(s.litems)) : '')
+              + (s.ltext?'<div class="sub">'+s.ltext+'</div>':''))
+      +   '</div>'
+      +   '<div class="col">'
+      +     (s.rh?'<h3>'+s.rh+'</h3>':'')
+      +     (s.rterm ? termBlock(s.rterm, s.rcls)
+              : (s.ritems ? (s.rsteps?steps(s.ritems):bullets(s.ritems)) : '')
+              + (s.rtext?'<div class="sub">'+s.rtext+'</div>':''))
+      +   '</div>'
+      + '</div>'
+      + (s.foot?'<div class="callout '+(s.footTone||'')+' mt">'+s.foot+'</div>':'');
+
+  } else if(s.type==='cards'){
+    body = kicker(s.kick, s.tone) + '<h2>'+s.title+'</h2>'
+      + (s.sub?'<div class="sub mb">'+s.sub+'</div>':'')
+      + '<div class="grid'+(s.cols||3)+'">'
+      + s.cards.map(function(c){
+          return '<div class="card '+(c.tone||'')+'">'
+            + (c.n?'<div class="n">'+c.n+'</div>':'')
+            + '<h4>'+c.h+'</h4>'
+            + (c.p?'<p>'+c.p+'</p>':(c.li?bullets(c.li,'small'):''))
+            + '</div>';
+        }).join('')
+      + '</div>'
+      + (s.foot?'<div class="callout '+(s.footTone||'')+' mt">'+s.foot+'</div>':'');
+
+  } else if(s.type==='bigcards'){
+    body = kicker(s.kick, s.tone) + '<h2>'+s.title+'</h2>'
+      + (s.sub?'<div class="sub mb">'+s.sub+'</div>':'')
+      + '<div class="grid'+(s.cols||4)+'">'
+      + s.cards.map(function(c){
+          return '<div class="card big '+(c.tone||'')+'"><div class="n">'+c.n+'</div>'
+            + '<div class="l">'+c.l+'</div></div>';
+        }).join('')
+      + '</div>'
+      + (s.foot?'<div class="callout '+(s.footTone||'')+' mt">'+s.foot+'</div>':'');
+
+  } else if(s.type==='chain'){
+    body = kicker(s.kick, s.tone) + '<h2>'+s.title+'</h2>'
+      + (s.sub?'<div class="sub mb">'+s.sub+'</div>':'')
+      + '<div class="chain">'
+      + s.nodes.map(function(nd,i){
+          return (i?'<div class="arrowx">&#8594;</div>':'')
+            + '<div class="node '+(nd.hot?'hot':(nd.goal?'goal':''))+'">'
+            + '<div class="step">'+nd.step+'</div>'
+            + '<div class="t">'+nd.t+'</div>'
+            + '<div class="d">'+nd.d+'</div></div>';
+        }).join('')
+      + '</div>'
+      + (s.term ? '<div class="mt">'+termBlock(s.term, s.cls)+'</div>' : '')
+      + (s.foot?'<div class="callout '+(s.footTone||'')+' mt">'+s.foot+'</div>':'');
+
+  } else if(s.type==='flow'){
+    body = kicker(s.kick, s.tone) + '<h2>'+s.title+'</h2>'
+      + (s.sub?'<div class="sub mb">'+s.sub+'</div>':'')
+      + '<div class="flow">'
+      + s.items.map(function(f){
+          return '<div class="f '+(f.crit?'crit':'')+'"><div class="no">'+f.no+'</div>'
+            + '<div class="tx">'+f.tx+'</div></div>';
+        }).join('')
+      + '</div>'
+      + (s.term?'<div class="mt">'+termBlock(s.term,s.cls)+'</div>':'')
+      + (s.foot?'<div class="callout '+(s.footTone||'')+' mt">'+s.foot+'</div>':'');
+
+  } else if(s.type==='table'){
+    body = kicker(s.kick, s.tone) + '<h2>'+s.title+'</h2>'
+      + (s.sub?'<div class="sub mb">'+s.sub+'</div>':'')
+      + '<table class="d '+(s.small?'sm':'')+'">'
+      + '<thead><tr>'+s.head.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr></thead>'
+      + '<tbody>'+s.rows.map(function(r){
+          return '<tr>'+r.map(function(c){return '<td>'+c+'</td>';}).join('')+'</tr>';
+        }).join('')+'</tbody></table>'
+      + (s.foot?'<div class="callout '+(s.footTone||'')+' mt">'+s.foot+'</div>':'');
+
+  } else if(s.type==='fix'){
+    body = kicker(s.kick, s.tone) + '<h2>'+s.title+'</h2>'
+      + (s.sub?'<div class="sub mb">'+s.sub+'</div>':'')
+      + '<div class="row">'
+      +   '<div class="col"><div class="card red" style="height:100%"><h4>How the attacker wins</h4>'
+      +     bullets(s.attack,'small')+'</div></div>'
+      +   '<div class="col"><div class="card cyan" style="height:100%"><h4>How you detect it</h4>'
+      +     bullets(s.detect,'small')+'</div></div>'
+      + '</div>'
+      + '<div class="card grey mt"><h4>How you fix it</h4>'+steps(s.fix,'small')+'</div>'
+      + (s.code?'<div class="mt">'+termBlock(s.code,s.cls||'cyan')+'</div>':'');
+  }
+
+  html += '<section class="slide '+(s.type==='title'?'title':(s.type==='divider'?'divider':''))+'" '
+        + 'data-i="'+i+'" data-sec="'+esc(s.sec||'')+'"><div class="inner">'+body+'</div></section>';
+});
+
+deck.innerHTML = html;
+var slides = Array.prototype.slice.call(deck.querySelectorAll('.slide'));
+
+/* ---- auto-fit: shrink any slide whose content exceeds the frame ---- */
+(function autofit(){
+  var AVAIL = 720 - 88;                 // slide height minus vertical padding
+  slides.forEach(function(sl){
+    var wasActive = sl.classList.contains('active');
+    var prevVis  = sl.style.visibility;
+    sl.classList.add('active');
+    sl.style.visibility = 'hidden';
+    var inner = sl.querySelector('.inner');
+    var h = inner ? inner.offsetHeight : 0;
+    var f = 1;
+    if (h > AVAIL && h > 0) {
+      f = Math.max(0.58, AVAIL / h);
+      f = Math.floor(f * 50) / 50;      // round down to 0.02 steps
+    }
+    if (inner) inner.style.setProperty('--fit', f);
+    sl.style.visibility = prevVis;
+    if (!wasActive) sl.classList.remove('active');
+  });
+})();
+
+/* ============================================================================
+   NAVIGATION
+   ========================================================================== */
+var cur = 0, revealTimer = null;
+
+function fit(){
+  var s = Math.min(window.innerWidth/1280, (window.innerHeight)/720) * 0.985;
+  deck.style.transform = 'scale('+s+')';
+}
+window.addEventListener('resize', fit); fit();
+
+function revealTerms(sl){
+  var terms = sl.querySelectorAll('.term');
+  terms.forEach(function(t){
+    var lns = t.querySelectorAll('.ln');
+    lns.forEach(function(l){ l.style.opacity='0'; });
+    t.classList.add('cur');
+    var d = 0;
+    lns.forEach(function(l,idx){
+      var delay = idx<3 ? idx*90 : 270 + (idx-3)*38;
+      setTimeout(function(){ l.style.opacity='1'; }, delay);
+      d = delay;
+    });
+    setTimeout(function(){ t.classList.remove('cur'); }, d+900);
+  });
+}
+function hideTerms(sl){
+  sl.querySelectorAll('.term .ln').forEach(function(l){ l.style.opacity='0'; });
+}
+
+function show(n, animate){
+  if(n<0) n=0; if(n>=slides.length) n=slides.length-1;
+  slides[cur].classList.remove('active');
+  hideTerms(slides[cur]);
+  cur = n;
+  var sl = slides[cur];
+  sl.classList.add('active');
+  document.getElementById('prog').style.width = ((cur+1)/slides.length*100)+'%';
+  document.getElementById('count').textContent = (cur+1)+' / '+slides.length;
+  document.getElementById('fid').textContent = sl.getAttribute('data-sec')||'';
+  if(animate!==false) revealTerms(sl); else revealTerms(sl);
+  renderNotes(sl);
+  try{ location.hash = 's'+(cur+1); }catch(e){}
+}
+function renderNotes(sl){
+  var n = document.getElementById('notes');
+  var txt = SLIDES[cur].notes;
+  n.innerHTML = '<h5>SPEAKER NOTES — SLIDE '+(cur+1)+'</h5>'
+    + (txt ? esc(txt) : '<i>(no notes)</i>');
+}
+
+/* overview grid */
+var ov = document.getElementById('overview'), ovg = document.getElementById('ovgrid');
+slides.forEach(function(sl,i){
+  var h = sl.querySelector('h2') || sl.querySelector('h1');
+  var d = document.createElement('div');
+  d.className='ovcell'; d.setAttribute('data-i',i);
+  d.innerHTML = '<div class="i">'+String(i+1).padStart(2,'0')+' &middot; '
+    + esc(sl.getAttribute('data-sec')||'')+'</div><div class="t">'
+    + esc((h?h.textContent:'').slice(0,90))+'</div>';
+  d.onclick=function(){ ov.classList.remove('on'); show(i); };
+  ovg.appendChild(d);
+});
+function openOv(){
+  ov.classList.add('on');
+  ovg.querySelectorAll('.ovcell').forEach(function(c,i){
+    c.classList.toggle('cur', i===cur);
+  });
+}
+
+/* timer */
+var t0=null, tEl=document.createElement('div');
+tEl.style.cssText='position:fixed;left:14px;top:12px;font-size:12px;color:#23384a;z-index:60';
+document.body.appendChild(tEl);
+setInterval(function(){
+  if(!t0){ tEl.textContent=''; return; }
+  var s=Math.floor((Date.now()-t0)/1000);
+  tEl.textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+},1000);
+
+document.addEventListener('keydown', function(e){
+  var k=e.key;
+  if(k==='ArrowRight'||k==='PageDown'||k===' '||k==='Enter'){ e.preventDefault(); show(cur+1); }
+  else if(k==='ArrowLeft'||k==='PageUp'||k==='Backspace'){ e.preventDefault(); show(cur-1); }
+  else if(k==='Home'){ show(0); }
+  else if(k==='End'){ show(slides.length-1); }
+  else if(k==='n'||k==='N'){ document.getElementById('notes').classList.toggle('on'); }
+  else if(k==='o'||k==='O'){ ov.classList.contains('on')?ov.classList.remove('on'):openOv(); }
+  else if(k==='f'||k==='F'){
+    if(!document.fullscreenElement){ document.documentElement.requestFullscreen(); }
+    else { document.exitFullscreen(); }
+  }
+  else if(k==='t'||k==='T'){ t0 = t0?null:Date.now(); }
+  else if(k==='Escape'){ ov.classList.remove('on'); }
+  else if(/^[0-9]$/.test(k)){
+    // jump to next slide of a different section number is complex; treat as % of deck
+    var target = Math.floor(slides.length * (parseInt(k)/10));
+    show(target);
+  }
+});
+deck.addEventListener('click', function(e){ show(cur+1); });
+ov.addEventListener('click', function(e){ if(e.target===ov) ov.classList.remove('on'); });
+
+/* boot */
+var start = parseInt((location.hash||'').replace('#s',''),10);
+show(isNaN(start)?0:start-1);
+</script>
+</body>
+</html>
