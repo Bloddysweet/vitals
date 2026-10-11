@@ -1,9 +1,69 @@
-# WEB-2026-014 — Unauthenticated Bulk Retrieval of Patient Prescriptions Including Aadhaar Numbers, Mobile Numbers and Clinical Complaints
+# WEB-2026-014 — Unauthenticated Retrieval of the Prescription-Type Reference Table (39 Records) — Patient Fields Present in Schema But Unpopulated
+
+> # ⚠️ CORRECTION — REVISED 2026-10-12
+>
+> **This finding was originally written as a CRITICAL exposure of 39 patient prescriptions including Aadhaar numbers and clinical complaints. That was wrong.**
+>
+> The original assessment was based on **field names**. A **field-population analysis** then established that in all 39 records, only **two** fields contain data:
+>
+> ```
+> TypeId     39/39      TypeDesc   39/39
+> Aadhar      0/39      DOB         0/39      MobileNo        0/39
+> Name        0/39      ChiefComplaints 0/39  AdmitDate       0/39
+> ```
+>
+> `api/Prescription/GetPatientPrescription/{type}` takes a **prescription type** as its parameter. With `{type}` = `1` it returns the reference list of prescription types — not prescriptions belonging to patients.
+>
+> **This is a lookup table, not patient data.**
+>
+> **Severity revised: CRITICAL (9.1) → LOW.**
+>
+> **To retrieve actual patient prescriptions, the correct endpoints are** `api/Prescription/GetAdmissionDetails/{regno}/{opatientid}`, `api/Prescription/PatientPrescriptionList/{Date}/{DocCode}` and `api/PrescriptionRpt/PatientData/{PrID}`. **These have not yet been tested with a valid registration number** and should be the next step.
+>
+> **Lesson recorded:** field *names* are not evidence of data exposure. Population must be verified before severity is assigned.
+
+---
+
+## Corrected Assessment
 
 | Field | Value |
 |---|---|
 | **Finding ID** | WEB-2026-014 |
-| **Severity** | **CRITICAL** |
+| **Severity** | **LOW** *(revised from Critical — see correction above)* |
+| **CVSS v3.1 Score** | **3.7** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N`) |
+| **CWE** | CWE-200 (Exposure of Sensitive Information), CWE-306 (Missing Authentication for Critical Function) |
+| **Affected Targets** | `https://narayanagroup.co.in/NnoteApi/api/Prescription/GetPatientPrescription/{type}` |
+| **Status** | Confirmed (Live Target) — **no patient data present at `/1`** |
+| **Phase** | Phase 2 (2026-10-11 / corrected 2026-10-12) |
+
+### What is actually exposed
+
+A 39-row reference table mapping `TypeId` → `TypeDesc` (prescription types). Harmless in itself.
+
+The 35-column **schema** discloses the organisation's prescription data model — including that it holds `Aadhar`, `ChiefComplaints`, `DOB` and `MobileNo` against prescriptions. That is reconnaissance value only.
+
+### Impact (revised)
+
+- **Reconnaissance:** confirms which patient attributes are stored, guiding attacks against endpoints that return populated values.
+- **No privacy impact at this endpoint.** No Aadhaar, no names, no complaints.
+
+### Remediation (revised)
+
+1. Require authentication on the controller.
+2. Return a DTO with only `TypeId` and `TypeDesc`.
+3. **Test the patient-specific prescription endpoints with a valid registration number** before concluding anything about prescription exposure.
+
+---
+
+# ⬇️ ORIGINAL (SUPERSEDED) TEXT — retained for audit trail
+<br>
+
+# ~~WEB-2026-014 — Unauthenticated Bulk Retrieval of Patient Prescriptions Including Aadhaar~~
+
+| Field | Value |
+|---|---|
+| **Finding ID** | WEB-2026-014 |
+| **Severity** | ~~**CRITICAL**~~ **→ LOW (corrected)** |
 | **CVSS v3.1 Score** | **9.1** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N`) |
 | **CWE** | CWE-306 (Missing Authentication for Critical Function), CWE-359 (Exposure of Private Personal Information to an Unauthorized Actor), CWE-312 (Cleartext Storage of Sensitive Information) |
 | **OWASP Top 10 (2021)** | A01:2021 — Broken Access Control · A02:2021 — Cryptographic Failures |

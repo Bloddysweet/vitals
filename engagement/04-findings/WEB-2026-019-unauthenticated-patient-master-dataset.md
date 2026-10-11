@@ -1,9 +1,70 @@
-# WEB-2026-019 — Unauthenticated Retrieval of the Patient Master Dataset: 2,708 Records Containing Aadhaar, Mobile, Photograph, Live Ward/Bed Location and Portal PIN Fields
+# WEB-2026-019 — Unauthenticated Retrieval of the Commercial Tariff / Treatment-Package Catalogue (2,708 Records) With Unpopulated Patient-Field Schema
+
+> # ⚠️ CORRECTION — REVISED 2026-10-12
+>
+> **This finding was originally written as a CRITICAL patient-data breach. That was wrong.**
+>
+> The original assessment was based on the **field names** in the response, which include `Aadhar`, `MobileNo`, `PatPhoto`, `WardName`, `BedId`, `PIN` and `ConfirmPIN`. A subsequent **field-population analysis** established that **every one of those fields is null in all 2,708 records**:
+>
+> ```
+> PIN              0/2708      Aadhar        0/2708      MobileNo    0/2708
+> ConfirmPIN       0/2708      PatPhoto      0/2708      WardName    0/2708
+> Attendant        0/2708      BedId         0/2708      AdmitDate   0/2708
+> ```
+>
+> The only populated fields are commercial: `Pkgcode`, `Pkgdes`, `Pkgamount`, `tariff`, `Pkgtype`, `PakRemark`, `Pakdeptcode`.
+>
+> **This is a treatment-package and pricing catalogue, not a patient register.** There is no patient data in it.
+>
+> **Severity revised: CRITICAL (9.8) → LOW.** See the corrected assessment below.
+>
+> **Lesson recorded:** field *names* are not evidence of data exposure. Population must be verified before severity is assigned.
+
+---
+
+## Corrected Assessment
 
 | Field | Value |
 |---|---|
 | **Finding ID** | WEB-2026-019 |
-| **Severity** | **CRITICAL** |
+| **Severity** | **LOW** *(revised from Critical — see correction above)* |
+| **CVSS v3.1 Score** | **3.7** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N`) |
+| **CWE** | CWE-200 (Exposure of Sensitive Information), CWE-306 (Missing Authentication for Critical Function) |
+| **OWASP Top 10 (2021)** | A01:2021 — Broken Access Control |
+| **Affected Targets** | `https://narayanagroup.co.in/NnoteApi/api/Patient/GetPatientPackages/{Ispackage123}` |
+| **Status** | Confirmed (Live Target) — **no patient data present** |
+| **Scale** | 2,708 records · 79 fields · 3,760,340 bytes |
+| **Phase** | Phase 2 (2026-10-11 / corrected 2026-10-12) |
+
+### What is actually exposed
+
+A complete **treatment-package and tariff catalogue** — the packages the hospital group offers, with codes, descriptions, amounts and department codes. This is **commercially** sensitive (competitors can see the group's pricing) but contains **no personal data**.
+
+The 79-column **schema** also reveals the internal shape of the patient record model — that is, which fields the organisation holds about patients (`Aadhar`, `PatPhoto`, `WardName`, `BedId`, `AttendantMobile`, `PIN`). Knowing the schema aids an attacker in targeting other endpoints, which is the only security impact here.
+
+### Impact (revised)
+
+- **Commercial:** full pricing structure disclosed to competitors.
+- **Reconnaissance:** the schema discloses which patient attributes the organisation stores, guiding attacks against endpoints that *do* return populated values (see WEB-2026-015 and WEB-2026-017).
+- **No privacy impact.** No Aadhaar, no mobile numbers, no photographs, no bed locations, no credentials.
+
+### Remediation (revised)
+
+1. Require authentication if the pricing catalogue is not intended to be public.
+2. Do not serialise whole entities — return a DTO containing only the ~8 populated fields. A 79-field response with 71 null columns is wasteful and leaks schema.
+3. No data-breach notification is required for this finding.
+
+---
+
+# ⬇️ ORIGINAL (SUPERSEDED) TEXT — retained for audit trail
+<br>
+
+# ~~WEB-2026-019 — Unauthenticated Retrieval of the Patient Master Dataset~~
+
+| Field | Value |
+|---|---|
+| **Finding ID** | WEB-2026-019 |
+| **Severity** | ~~**CRITICAL**~~ **→ LOW (corrected)** |
 | **CVSS v3.1 Score** | **9.8** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H`) |
 | **CWE** | CWE-306 (Missing Authentication for Critical Function), CWE-359 (Exposure of Private Personal Information), CWE-522 (Insufficiently Protected Credentials), CWE-312 (Cleartext Storage of Sensitive Information) |
 | **OWASP Top 10 (2021)** | A01:2021 — Broken Access Control · A02:2021 — Cryptographic Failures · A07:2021 — Identification and Authentication Failures |

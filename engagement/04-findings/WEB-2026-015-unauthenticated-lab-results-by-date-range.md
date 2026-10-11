@@ -3,8 +3,38 @@
 | Field | Value |
 |---|---|
 | **Finding ID** | WEB-2026-015 |
-| **Severity** | **CRITICAL** |
-| **CVSS v3.1 Score** | **9.1** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N`) |
+| **Severity** | **HIGH** *(revised from Critical — see correction below)* |
+| **CVSS v3.1 Score** | **7.5** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N`) |
+
+> # ⚠️ PARTIAL CORRECTION — 2026-10-12
+>
+> The original assessment was based on **field names**. A **field-population analysis** has since confirmed which fields actually contain data.
+>
+> **CONFIRMED REAL — 7 patient records, all populated:**
+>
+> ```
+> PatientName   7/7      RegNo   7/7      MobileNumber   7/7
+> Age           7/7      Type    7/7      BillNumber     7/7
+> ```
+>
+> **NOT populated — no values in any record:**
+>
+> ```
+> AadharNo      0/7      TestValue      0/7      TestDescription  0/7
+> TestCode      0/7      ImageData      0/7      FilePath         0/7
+> Collectedon   0/7      Reportedon     0/7      Wardname         0/7
+> ```
+>
+> **Therefore:**
+> - ❌ **No Aadhaar numbers.** The `AadharNo` field exists but is null.
+> - ❌ **No laboratory result values.** `TestValue` is null in all records.
+> - ✅ **Real patient identities ARE exposed** — name, registration number and mobile number for 7 patients, retrievable by caller-supplied date range with no authentication.
+>
+> **Severity revised 9.1 → 7.5.** The finding remains genuine and materially serious — unauthenticated disclosure of named patients with mobile numbers — but it is not the Aadhaar-plus-results breach originally described, and the confirmed volume is small (7 records across a 284-day range).
+>
+> **Open question:** 23 sibling `LabReport` endpoints accept a `{RegNo}` directly and were not tested with a valid registration number. They may return fully-populated records including `TestValue` and `AadharNo`. **This must be tested before the exposure is characterised as small — see §7.**
+>
+> **Lesson recorded:** field *names* are not evidence of data exposure. Population must be verified before severity is assigned.
 | **CWE** | CWE-306 (Missing Authentication for Critical Function), CWE-359 (Exposure of Private Personal Information), CWE-639 (Authorization Bypass Through User-Controlled Key) |
 | **OWASP Top 10 (2021)** | A01:2021 — Broken Access Control |
 | **Affected Targets** | `https://narayanagroup.co.in/NnoteApi/api/LabReport/getPatientData/{FromDate}/{ToDate}` and 23 sibling `api/LabReport/*` endpoints |
