@@ -11,7 +11,7 @@
 
 ## The headline, in one sentence
 
-Someone on the internet, with no username and no password, can read your patients' prescriptions and laboratory results — including Aadhaar numbers — and can reach the part of the system that writes to your database.
+Someone on the internet, with no username and no password, can download your entire patient list — including Aadhaar numbers and **which ward and bed each patient is in right now** — and can reach the part of the system that writes to your database.
 
 ---
 
@@ -19,9 +19,31 @@ Someone on the internet, with no username and no password, can read your patient
 
 Over the past two days we reviewed the two API services that power your staff portal (`/Nnote/`) and patient systems. We found **205 endpoints across the two services, none of which require a login.**
 
-Three results need your attention today.
+Four results need your attention today.
 
-### 1. Patient prescriptions — readable by anyone (Critical)
+### 1. The full patient list — with live ward and bed locations (Critical) — **most urgent**
+
+One web request with no login returns **2,708 patient records, 3.7 MB**. Each record has 79 fields, including:
+
+- Patient name, date of birth, age, gender, mobile number, **Aadhaar number**
+- 🔴 **Which ward and bed the patient is in right now** — `WardName`, `BedId`, `BedDescription`
+- 🔴 **A photograph of the patient**
+- 🔴 **Two fields called `PIN` and `ConfirmPIN`**
+- Name and mobile number of the patient's attendant or family member
+- Admission and discharge dates, department, doctor, patient status
+- Full billing detail — tariff, package amount, itemised charges
+
+Address: `/NnoteApi/api/Patient/GetPatientPackages/1`
+
+**Two things in that list need action today, before anything else:**
+
+**(a) The `PIN` fields.** Your patient portal logs patients in with a PIN. If `PIN` and `ConfirmPIN` in this response are those portal PINs — and the fact that there is a *confirm* field suggests they are — then this response provides working login details for 2,708 patient accounts. **Please check this immediately.** A safe way to tell, without reading anyone's PIN, is to check how long the values are: if they are all exactly 6 digits they are probably postcodes; if the lengths vary they are probably credentials.
+
+**(b) Ward and bed locations.** Anyone can see exactly where a named patient is in the hospital, in real time. For patients admitted under safeguarding, domestic-violence or VIP arrangements, this is a safety-of-life issue, not just a privacy one.
+
+A second address, `/NnoteApi/api/Patient/Camp/getcamppatientlist/…`, returns the same 79 fields for camp patients, for any date range you give it.
+
+### 2. Patient prescriptions — readable by anyone (Critical)
 
 A single web request with no login returns **39 patient prescription records**. Each record contains:
 
@@ -33,7 +55,7 @@ A single web request with no login returns **39 patient prescription records**. 
 
 Address: `/NnoteApi/api/Prescription/GetPatientPrescription/1`
 
-### 2. Laboratory results — readable by anyone, for any date range (Critical)
+### 3. Laboratory results — readable by anyone, for any date range (Critical)
 
 A request with no login returns patient laboratory records. Each record contains **47 fields**, including patient name, mobile number, **Aadhaar number**, the test description and **the test result itself**, plus the file path to the report document.
 
@@ -41,7 +63,7 @@ The caller picks the date range. A one-day range returned one record; a nine-mon
 
 Address: `/NnoteApi/api/LabReport/getPatientData/01-JAN-2026/11-OCT-2026`
 
-### 3. The system will accept changes from anyone (Critical)
+### 4. The system will accept changes from anyone (Critical)
 
 This is the one we most want you to act on today.
 
@@ -93,9 +115,11 @@ Every test was a single, read-only web request, or a deliberately malformed requ
 
 ### In the next few hours
 
-1. **Turn on request logging** for `/NnoteApi/` and `/NtraktApi/`. Keep whatever logs already exist.
-2. **Block all POST, PUT and DELETE requests at your firewall or reverse proxy** for both API paths, while allowing GET. This is a ten-minute change and it stops the most serious issue immediately. Your portals use GET for reading, so this should not break anything users do.
-3. **Take `SaveVitalData` and `savepatientprescription` offline entirely** — these are the patient-safety ones.
+1. **Check whether `PIN` / `ConfirmPIN` are patient portal PINs.** This is the single most important question arising from this review. See §1(a) above for how to check it safely. If they are credentials, every patient portal PIN needs to be reset and patients need to be told.
+2. **Turn on request logging** for `/NnoteApi/` and `/NtraktApi/`. Keep whatever logs already exist.
+3. **Block all POST, PUT and DELETE requests at your firewall or reverse proxy** for both API paths, while allowing GET. This is a ten-minute change and it stops the most serious issue immediately. Your portals use GET for reading, so this should not break anything users do.
+4. **Take `SaveVitalData` and `savepatientprescription` offline entirely** — these are the patient-safety ones.
+5. **Block or authenticate `GetPatientPackages` and `getcamppatientlist`.** These are the two largest exposures, at 3.7 MB and 237 KB per request.
 
 ### In the next few days
 
@@ -115,12 +139,14 @@ Every test was a single, read-only web request, or a deliberately malformed requ
 
 | Document | Contents |
 |---|---|
+| **`WEB-2026-019`** | **Patient master dataset — 2,708 records, Aadhaar, bed location, PIN fields. Most urgent.** |
+| **`WEB-2026-018`** | **Unauthenticated write endpoints — full technical detail, including the Oracle evidence (CVSS 9.8)** |
 | `WEB-2026-014` | Patient prescriptions and Aadhaar — full technical detail |
 | `WEB-2026-015` | Laboratory results by date range — full technical detail |
-| `WEB-2026-018` | Unauthenticated write endpoints — full technical detail, including the evidence |
 | `WEB-2026-013` | Publicly exposed API documentation (all 205 endpoints listed) |
 | `WEB-2026-016` | Staff directory with live attendance times |
 | `WEB-2026-017` | Patient admission and billing list |
+| `WEB-2026-020` | Staff duty roster — shifts, work locations, mobile numbers |
 | `WEB-2026-011` / `012` / plus WEB-2026-005 updates | Smaller items and supporting detail |
 
 ---
