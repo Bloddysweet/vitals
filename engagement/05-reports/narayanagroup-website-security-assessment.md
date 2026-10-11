@@ -1,5 +1,12 @@
 # Web Application Penetration Test Report — `narayanagroup.co.in`
 
+> **Client-facing version (plain English, for non-technical readers):**
+> [`engagement/06-deliverables/Narayana-Group-Website-Security-Assessment-Client-Report.pdf`](../06-deliverables/Narayana-Group-Website-Security-Assessment-Client-Report.pdf)
+> — a 42-page illustrated report written for the owner, with a glossary, real-world
+> analogies, business impact, and a phased remediation plan. Regenerate it with
+> `python3 engagement/06-deliverables/build_client_pdf.py`.
+
+
 | Metadata | Details |
 |---|---|
 | **Target Scope** | `https://narayanagroup.co.in/`, all discovered subdomains (`www`, `pacs`, `dms`, `app`, `helpdesk`, `nmc`, `uat`, `online`), and 25+ linked sub-applications |
