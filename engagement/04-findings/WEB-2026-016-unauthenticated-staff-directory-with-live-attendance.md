@@ -1,4 +1,26 @@
-# WEB-2026-016 — Unauthenticated Staff Directory With Live Attendance (`InTime`/`OutTime`), Date of Birth and Mobile Numbers
+# WEB-2026-016 — Unauthenticated Staff Directory: 17 Confirmed Employee Records With Name, Date of Birth, Mobile Number, Employee Number, Department and Designation
+
+> # ✅ VERIFIED AGAINST REAL VALUES — 2026-10-12
+>
+> A field-population analysis confirmed **12 of 14 fields populated in all 17 records**:
+>
+> ```
+> POPULATED 12 of 14 fields:
+>    MobileNo        17/17     EmployeeName   17/17     EmployeeNo      17/17
+>    DateOfBirth     17/17     DateOfJoining  17/17     Department      17/17
+>    Designation     17/17     EmployeeId     17/17     EmployeeSlno    17/17
+>    Gender          17/17     DepartmentSlno 17/17     DesignationSlno 17/17
+> ```
+>
+> **This is genuine, fully-populated staff personal data.** No assertion in this finding rests on field names alone.
+>
+> ### ⚠️ One item corrected
+>
+> The original version of this finding emphasised **`InTime` and `OutTime`** as "live attendance punch times" and built much of its physical-security impact argument on them. **Those two fields are NOT populated — 0/17.** They are the only two unpopulated fields in the response.
+>
+> **The "live attendance / who is in the building right now" claim is withdrawn.** The physical-security section below has been rewritten to reflect what is actually exposed. The finding remains High severity on the strength of the confirmed name + date of birth + mobile number + employee number exposure.
+>
+> **Lesson recorded:** field *names* are not evidence of data exposure. Population must be verified before severity is assigned.
 
 | Field | Value |
 |---|---|
@@ -78,13 +100,13 @@ The endpoint never returns an error or an authentication challenge — it return
 
 ## 3. Impact
 
-### 3.1 Physical security exposure
+### 3.1 ~~Physical security exposure~~ — **WITHDRAWN**
 
-`InTime` and `OutTime` reveal **which staff are physically on site at any given moment**, and when specific individuals arrive and leave. This supports:
+> The original version of this section argued that `InTime` and `OutTime` reveal which staff are physically on site, enabling burglary timing, stalking and shift-aware social engineering.
+>
+> **Both fields are unpopulated (0/17). No attendance data is exposed by this endpoint.** The entire argument is withdrawn.
 
-- **Burglary and physical intrusion** — an attacker can determine when a department is unstaffed, or when a specific individual is working late.
-- **Targeted stalking or harassment** of a named employee, using their known shift pattern.
-- **Social engineering timing** — impersonating a colleague or manager at a moment when the real one is known to be off-site.
+**What remains true:** `Department` and `Designation` are populated for all 17 employees, so an attacker can still map which teams exist and, from `EmployeeNo` ranges and `DateOfJoining`, infer rough seniority. This is reconnaissance value, not live location tracking.
 
 ### 3.2 Identity fraud and account takeover
 

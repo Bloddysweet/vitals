@@ -1,4 +1,64 @@
-# WEB-2026-020 — Unauthenticated Staff Duty Roster: 170 Records With Shift Times, Work Location and Mobile Numbers
+# WEB-2026-020 — Unauthenticated Department Reference List (170 Records) — Roster Fields Present in Schema But Unpopulated
+
+> # ⚠️ CORRECTION — REVISED 2026-10-12
+>
+> **This finding was originally written as a High-severity staff duty roster exposure. That was wrong.**
+>
+> Field-population analysis established that **only 2 of 32 fields contain any data**:
+>
+> ```
+> POPULATED 2 of 32 fields:
+>    Name   170/170      Code   170/170
+>
+> ShiftTime 0/170   ShiftDate 0/170   InTime 0/170   OutTime 0/170
+> WorkLocation 0/170   Mobile 0/170   Designation 0/170   EmpId 0/170
+> ```
+>
+> **This endpoint returns a plain list of department names and codes.** It is not a duty roster, contains no staff names, no mobile numbers, no shift times and no work locations.
+>
+> **Severity revised: HIGH (7.5) → INFORMATIONAL / LOW.**
+>
+> **Lesson recorded:** field *names* are not evidence of data exposure. Population must be verified before severity is assigned. This is the same error made in WEB-2026-014 and WEB-2026-019.
+
+---
+
+## Corrected Assessment
+
+| Field | Value |
+|---|---|
+| **Finding ID** | WEB-2026-020 |
+| **Severity** | **LOW** *(revised from High — see correction above)* |
+| **CVSS v3.1 Score** | **3.7** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N`) |
+| **CWE** | CWE-200 (Exposure of Sensitive Information) |
+| **Affected Targets** | `https://narayanagroup.co.in/NnoteApi/api/Roster/Departments` |
+| **Status** | Confirmed (Live Target) — **no staff data present** |
+| **Scale** | 170 records · 32 fields · 90,382 bytes (almost entirely null columns) |
+| **Phase** | Phase 2 (2026-10-11 / corrected 2026-10-12) |
+
+### What is actually exposed
+
+A list of 170 department names and codes. This is reference data of the same kind as `api/Departments` (NtraktApi) and `api/Masters/Department` — low sensitivity.
+
+The 32-column **schema** discloses that a duty-roster structure exists and which fields it holds (`ShiftTime`, `WorkLocation`, `Mobile`, `EmpId`, `Designation`). That is reconnaissance value only.
+
+### Impact (revised)
+
+- **Reconnaissance:** confirms a duty-roster subsystem exists and what it records.
+- **No privacy impact.** No staff names, mobiles, shifts or locations.
+- **Waste:** 90 KB transferred to convey 340 meaningful values — a symptom of serialising whole entities.
+
+### Remediation (revised)
+
+1. Return a DTO containing only `Code` and `Name`.
+2. Apply the estate-wide authentication filter.
+3. **If a populated duty roster is exposed anywhere, it would be through** `api/Roster/DutyDates/{empid}`, `api/Roster/DutyTimes/{empid}/{dutydate}`, `api/Roster/Employee/Shift/{empid}` or `api/Roster/Schedule` — **none of which have been tested with a valid `empid`.** A valid one is `3334024`. This should be tested before concluding the roster subsystem is safe.
+
+---
+
+# ⬇️ ORIGINAL (SUPERSEDED) TEXT — retained for audit trail
+<br>
+
+# ~~WEB-2026-020 — Unauthenticated Staff Duty Roster~~
 
 | Field | Value |
 |---|---|
