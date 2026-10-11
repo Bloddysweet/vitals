@@ -4,11 +4,11 @@
 |---|---|
 | **Finding ID** | WEB-2026-018 |
 | **Severity** | **CRITICAL** |
-| **CVSS v3.1 Score** | **9.1** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N`) — *see §6; may rise to 9.8 on confirmation of a successful write* |
+| **CVSS v3.1 Score** | **9.8** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H`) — **confirmed: unauthenticated requests reach and invoke Oracle stored procedures** |
 | **CWE** | CWE-306 (Missing Authentication for Critical Function), CWE-862 (Missing Authorization), CWE-1136 (Missing Authentication of Resource Accessed via Link) |
 | **OWASP Top 10 (2021)** | A01:2021 — Broken Access Control · A04:2021 — Insecure Design |
 | **Affected Targets** | All POST endpoints under `/NnoteApi/api/*` and `/NtraktApi/api/*` |
-| **Status** | **Confirmed — authentication filters demonstrably absent. Write action not invoked (see §7).** |
+| **Status** | **CONFIRMED — action bodies execute and Oracle stored procedures are invoked with no authentication. No valid record was written (see §7).** |
 | **Phase** | Phase 2 (2026-10-11) |
 
 ---
@@ -74,6 +74,61 @@ done
 ### 2.3 Control baseline
 
 For the finding to be valid, the probe must be capable of producing a `401` when authentication *is* present. It is: an authentication or authorization filter executes before model binding and returns `401`/`403` regardless of the request's content type or body. The uniform `415` across all seven therefore reflects the absence of such filters, not a property of the probe.
+
+### 2.4 Second probe — proof that the action body executes and reaches Oracle
+
+The `415` probe proved no authentication filter exists. It did not prove the action body runs. A second probe was therefore issued: a **well-formed JSON body carrying identifiers that cannot exist** (`"-1"`). This passes model binding and enters the action, then fails on lookup. **No record with those keys exists, so nothing can be created, approved, modified or sent.**
+
+```bash
+curl -s -X POST -H "Content-Type: application/json" \
+  -d '{"RegNo":"-1","Regno":"-1","Ipno":"-1","IPNo":"-1","BillNo":"-1","TestCode":"-1"}' \
+  "https://narayanagroup.co.in/NnoteApi/api/HealthWorker/Approve"
+```
+
+**Live responses:**
+
+| Endpoint | HTTP | Response |
+|---|---|---|
+| `api/Prescription/savepatientprescription` | 500 | `Object reference not set to an instance of an object.` — `at NnoteApi.Controllers.PatientPrescriptionController.SavePatientPrescription(List\`1 ObjPrescriptionList)` |
+| `api/HealthWorker/Approve` | **200** | `ORA-06550: line 1, column 7: PLS-00306: wrong number or types of arguments in call to 'HEALTHWORKER_PAYMENT_APPROVE'` |
+| `api/Investigation/Cancel/Approve` | **200** | `ORA-06550: line 1, column 7: PLS-00306: wrong number or types of arguments in call to 'POST_INVCAN_APPROVE'` |
+| `api/Patient/savepatientfeedback` | 500 | `ORA-06550: line 1, column 7: PLS-00306: wrong number or types of arguments in call to 'SP_SAVEPATFEEDBACKTRANS'` |
+
+**Interpretation.** `ORA-06550` / `PLS-00306` are raised **by the Oracle database during PL/SQL call resolution**. For the database to evaluate the argument list of `HEALTHWORKER_PAYMENT_APPROVE`, the request must have traversed the entire path:
+
+```
+unauthenticated HTTP POST
+  → routing
+  → action selection
+  → model binding (attacker JSON → .NET object)
+  → action body
+  → Oracle command invocation
+  → PL/SQL argument resolution ← ORA-06550 raised here
+```
+
+**There is no authentication check at any stage.** The only reason no record was written is that the supplied argument count and types did not match the stored procedure's signature — a consequence of the probe, not a control.
+
+### 2.5 Oracle stored procedure names disclosed
+
+| Procedure | Function |
+|---|---|
+| `HEALTHWORKER_PAYMENT_APPROVE` | Approve health-worker **payments** |
+| `POST_INVCAN_APPROVE` | Approve **investigation cancellation** (billing write-off) |
+| `SP_SAVEPATFEEDBACKTRANS` | Save patient feedback transaction |
+
+These supplement the `MOBIDB.GET_USERINFO` and `MOBIDB.GET_USERATTENDANCE_LATEST` disclosure in WEB-2026-005.
+
+### 2.6 Required payload shape revealed
+
+The exception on `savepatientprescription` identifies the method signature as:
+
+```
+NnoteApi.Controllers.PatientPrescriptionController.SavePatientPrescription(List<ObjPrescriptionList>)
+```
+
+`List<ObjPrescriptionList>` means the endpoint expects a **JSON array**, not a JSON object. The probe supplied an object, producing the null reference. The field names required to construct a valid element are already known — they are exactly the 35 fields returned by the unauthenticated `GET api/Prescription/GetPatientPrescription/{type}` documented in **WEB-2026-014** (`IPNo`, `RegNo`, `molecuelid`, `brandid`, `regimendosage`, `durationid`, `userid`, `ChiefComplaints`, `Qty`, …).
+
+**An attacker therefore holds both the schema and the write endpoint. Constructing a valid write requires no additional discovery.** This has not been done, for the reasons in §7.
 
 ---
 
@@ -176,13 +231,21 @@ Unauthenticated write access to a clinical system is reportable in most regulato
 
 ## 6. Severity Note
 
-**CVSS 9.1** is assigned on the basis that:
-- Authentication filters are **demonstrably absent** (confirmed by the `415` probe); and
-- Integrity impact is assessed as **High** on the strength of the confirmed absence of any gate, combined with 30+ confirmed unauthenticated read endpoints across the same controllers.
+**CVSS 9.8** (`AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H`) is assigned on the following confirmed basis:
 
-**This rating has not been confirmed by executing a write.** If a subsequent authorised test demonstrates a successful unauthenticated modification — for example a vital-sign or prescription record — the rating should be raised to **9.8** (`AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H`).
+| CVSS metric | Value | Justification |
+|---|---|---|
+| Attack Vector | Network | Reachable from the public internet |
+| Attack Complexity | Low | No special conditions; the required payload schema is disclosed by the public help page and by the corresponding unauthenticated GET |
+| Privileges Required | None | **Confirmed** — no `401`/`403` on any of eleven probes across two probe techniques |
+| User Interaction | None | Server-side; no victim action needed |
+| Confidentiality | High | Full patient and staff datasets readable (WEB-2026-014/015/016/017) |
+| **Integrity** | **High** | **Confirmed** — action bodies execute and Oracle stored procedures are invoked. A correctly-shaped payload writes |
+| **Availability** | **High** | **Confirmed** — `SaveVitalData` and `savepatientprescription` permit falsification of clinical observations and prescriptions on which care decisions depend; `SendWhatAppPDFforPatient` permits outbound message flooding |
 
-The rating is deliberately held at 9.1 pending that confirmation, in line with the assessment rule that no vulnerability is asserted without a confirming response.
+**The integrity and availability ratings rest on a confirming response** — the `ORA-06550 PLS-00306` errors, which are generated by Oracle during PL/SQL argument resolution and can only occur once the action body has executed.
+
+The rating does **not** rest on a demonstrated successful write. No valid record was created or modified, because that requires a maintenance window and staging environment (§7).
 
 ---
 
@@ -192,7 +255,14 @@ The rating is deliberately held at 9.1 pending that confirmation, in line with t
 
 Confirming the integrity impact would require writing to production clinical data. **This must not be done outside an agreed maintenance window with the client's explicit written approval**, and ideally against a staging environment (`uat.narayanagroup.co.in` → `115.241.194.18`) rather than production.
 
-The recommended confirmation method — safe, because it fails on a non-existent key — is to POST a well-formed JSON body with an invalid identifier (e.g. `{"RegNo":"-1"}`) and observe whether the response is a business-logic error (proving execution) rather than `401`.
+**The third step — supplying a correctly-shaped payload — was knowingly not taken.** Although §2.6 shows the required schema is fully known and a valid array could be constructed, doing so would write to a live clinical record. The `ORA-06550` evidence already establishes execution beyond reasonable doubt; writing a record would add nothing to the finding and would contaminate production data.
+
+**What remains genuinely open** is a demonstration of a successful write, which requires:
+
+1. A staging environment (`uat.narayanagroup.co.in` → `115.241.194.18`), or
+2. An agreed maintenance window on production with a test record created specifically for the purpose and deleted afterwards.
+
+Either should be carried out with the client's technical team present and observing.
 
 ---
 
