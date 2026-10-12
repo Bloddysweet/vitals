@@ -93,9 +93,32 @@ HTTP `200` — one record. Field names here are **lowercase**, which defeated th
 
 `locatioName` carries the patient's **home locality** — a further direct identifier not present in the other endpoints.
 
-### 2.4 `api/Patient/IsInPatient/{regno}`
+### 2.4 `api/Patient/IsInPatient/{regno}` — no personal data
 
-HTTP `200` — **4 records**, one per admission episode. Returns a list rather than a set of objects; requires a different parser. Not yet decoded.
+HTTP `200`, but the response body is the plain string `"Fail"` (4 characters). This is a boolean-as-string status check. **It carries no personal data and is not a concern.** Confirmed for two separate registration numbers.
+
+### 2.5 `api/Patient/ConsultDetails/{regno}` — consultation history across specialities
+
+HTTP `200` — one record **per consultation**. For registration number `20260133958`, two consultations were returned:
+
+| Field | Consultation 1 | Consultation 2 |
+|---|---|---|
+| `Regno` | `20260133958` | `20260133958` |
+| `PatientId` | `1026426052` | `1026504042` |
+| `Name` | `[22 chars]` | `[22 chars]` |
+| `DOB` | `[redacted]` | `[redacted]` |
+| `Age` / `Gender` | `46` / `Male` | `46` / `Male` |
+| `MobileNo` | `[10 digits]` | `[10 digits]` |
+| **`Department`** | **`General Medicine`** | **`Respiratory Medicine`** |
+| `DeptCode` | `GEM` | `PUL` |
+| `DoctorName` / `DoctorCode` | `[16 chars]` / `GEMMRK` | `[19 chars]` / `40801197` |
+| `PayType` | `CMP_CREDIT` | `CMP_CREDIT` |
+| `OrganisationCode` | `ASP` | `ASP` |
+| `PatientType` | `OP` | `OP` |
+
+**This is clinically meaningful beyond identity.** It discloses *which hospital specialities a named individual has attended*. A person's attendance at respiratory medicine, oncology, psychiatry, HIV or reproductive-health services is sensitive in itself, independent of any diagnosis text. Because consultations accumulate over time, this endpoint builds a ** longitudinal care history** for any patient whose registration number is known.
+
+Note also that `AdmissionDetails` returned 0 records for this registration number — this patient was seen only as an outpatient. The two endpoints are complementary: `AdmissionDetails` covers inpatients, `ConsultDetails` covers everyone.
 
 ### 2.5 Registration numbers are obtainable, not guessable-only
 
