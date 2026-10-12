@@ -17,6 +17,70 @@
 
 Every previously-confirmed finding in this engagement concerned **unauthenticated reading** of data. This finding concerns **unauthenticated writing**.
 
+### 1.0 Phase 2 Estate-Wide Sweep (2026-10-12) — full numbers
+
+The initial seven-endpoint probe was extended to **every write endpoint on the estate**.
+
+| Metric | Count |
+|---|---|
+| Write (POST) endpoints discovered | **81** |
+| **Ungated** — no authentication of any kind | **75** |
+| ↳ reached model binding (`415 Unsupported Media Type`) | 60 |
+| ↳ accepted and returned `204 No Content` | 13 |
+| ↳ reached the controller and threw (`500`) | 2 |
+| **Authenticated** (`401`) | **6** |
+
+### 1.1 All protected endpoints are scaffolded template code
+
+All **seven** endpoints across the entire 205-endpoint estate that return `401` belong to the **`AccountController`** — the controller that ships as boilerplate with the ASP.NET Web API project template:
+
+| Endpoint | Response |
+|---|---|
+| `GET  /NtraktApi/api/Account/UserInfo` | `401 Unauthorized` · `WWW-Authenticate: Bearer` |
+| `POST /NtraktApi/api/Account/AddExternalLogin` | `401 Unauthorized` · `WWW-Authenticate: Bearer` |
+| `POST /NtraktApi/api/Account/ChangePassword` | `401 Unauthorized` · `WWW-Authenticate: Bearer` |
+| `POST /NtraktApi/api/Account/Logout` | `401 Unauthorized` · `WWW-Authenticate: Bearer` |
+| `POST /NtraktApi/api/Account/RegisterExternal` | `401 Unauthorized` · `WWW-Authenticate: Bearer` |
+| `POST /NtraktApi/api/Account/RemoveLogin` | `401 Unauthorized` · `WWW-Authenticate: Bearer` |
+| `POST /NtraktApi/api/Account/SetPassword` | `401 Unauthorized` · `WWW-Authenticate: Bearer` |
+
+**This is the single most actionable fact in the engagement.** The authentication system is not missing, broken, or unimplemented — it is present, correctly configured, and demonstrably working. It was simply never applied to any controller the team wrote themselves.
+
+The remediation is therefore **not a project.** It is the application, estate-wide, of the `[Authorize]` attribute that already exists and already functions in their own codebase.
+
+### 1.2 The 13 accepted-upload endpoints
+
+All 13 endpoints returning `204 No Content` are **file upload** endpoints, confirming WEB-2026-003 across the estate:
+
+```
+NtraktApi/api/FileUpload/UploadFile
+NtraktApi/api/FileUpload/UploadFile/1
+NtraktApi/api/FileUpload/UploadForEmpFile/1/1
+NnoteApi/api/Nnote/FileUpload/UploadFile
+NnoteApi/api/Nnote/FileUpload/UploadFile/1/1
+NnoteApi/api/Nnote/FileUpload/UploadFile/mobile/1/1
+NnoteApi/api/Nnote/FileUpload/UploadFile_eng/1/1
+NnoteApi/api/Nnote/FileUpload/UploadFile_eng/mobile/1/1
+NnoteApi/api/Nnote/FileUpload/FeedBackUploadFile/1/1
+NnoteApi/api/Nnote/CampFileUpload/CampFeedBackUploadFile/1/1
+NnoteApi/api/Nnote/DMSFileUpload/DMSFeedBackUploadFile/1/1
+NnoteApi/api/LabReport/CultureLabPatientReport/1/1/1
+NnoteApi/api/LabReport/OutSidePatientReport/1/1/1
+```
+
+> ⚠️ **Caveat, stated plainly.** `204` means the request was accepted and the action body ran. The probe sent `Content-Type: text/plain` with body `x`, not a multipart file upload, so in all likelihood the controller's file loop found nothing to iterate and returned without writing. **This cannot be confirmed from outside.** The client should check their upload directories for stray artefacts created during testing on 2026-10-12.
+
+### 1.3 New Oracle objects disclosed by the two `500`s
+
+| Endpoint | Stored procedure | Line | Error |
+|---|---|---|---|
+| `Patient/DentalReport/DentalFeedback/1/1/1/1` | `WHISPROD.GET_DENTALPATIENT_FEEDBACK_RPT` | 42 | `ORA-06535: statement string in OPEN is NULL or 0 length` |
+| `Patient/Report/Feedback/1/1/1/1/1` | `WHISPROD.GET_PATIENT_FEEDBACK_RPT` | 51 | `ORA-06535: statement string in OPEN is NULL or 0 length` |
+
+Both reach the database layer with no authentication, adding two procedures to the Oracle oracle inventory in WEB-2026-005.
+
+### 1.4 Initial probe (Phase 1)
+
 Seven write endpoints were probed using a deliberately malformed request that cannot create or modify data. **All seven returned `415 Unsupported Media Type` rather than `401 Unauthorized` or `403 Forbidden`.**
 
 In the ASP.NET Web API request pipeline, the order of execution is:
