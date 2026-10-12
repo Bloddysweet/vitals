@@ -27,6 +27,85 @@ All backend REST API endpoints supporting `/Nnote/` and `/ncare/` under `/Ntrakt
 
 ---
 
+## 1A. Phase 2 Re-Verification & Extension (2026-10-12) — ✅ CONFIRMED INDEPENDENTLY
+
+Chain B was re-tested from scratch during Phase 2 against **different patients**, and the chain reproduced completely. This is an independent confirmation, not a restatement.
+
+### 1A.1 The chain, end to end, with a second and third patient
+
+```
+Step 1   GET /NnoteApi/api/Investigation/Cancel/Approval/List
+         → 101 records (38 dated 2026, 34 distinct Prno)
+
+Step 2   GET /NnoteApi/api/Patient/Info/20211103705
+         → PRAS……  ·  Age 55  ·  M  ·  Mobile 9491……  ·  OrganisationCode ARM
+
+Step 3   GET /NnoteApi/api/Investigation/Cancel/Bill/20211103705/202601100509/202601100002
+         → the investigations that patient underwent, with charges
+```
+
+**Step 3 output (live, 3 records):**
+
+| TestCode | TestDescription | Charge | Paid | CancelTest |
+|---|---|---|---|---|
+| `NT11211219` | **Ultra Sound Swelling ( Big )** | 400 | 400 | Y |
+| `NRCDUL01` | **DOPPLER STUDY OF LOWER LIMBS (ONE) VENIOUS** | 750 | 750 | N |
+| `NHMICVS` | **VIRAL SCREENING TEST** | 660 | 660 | N |
+
+Plus `PatientId 1026401922`, `PayType CMP_CREDIT`, `Status E`, `TotalCharges 1810`, referring and treating doctor codes and names.
+
+**A third patient** (`Prno 20251259069`, `PayType PAYING`, `TotalCharges 2500`):
+
+| TestCode | TestDescription | Charge |
+|---|---|---|
+| `CT128SB` | **CT BRAIN PLAIN ( OPTIMA 660 128SLICE )** | 2500 |
+
+### 1A.2 Why this matters more than the Phase 1 sample
+
+The Phase 1 sample was a blood-grouping test. The Phase 2 sample includes a **viral screening test** and a **CT brain scan**. Those are investigations whose *names alone* disclose health information about the patient:
+
+- **Viral screening** — occupies the same social and employment risk category as HIV and hepatitis testing
+- **CT brain** — indicates neurological investigation, with all the implications for employment, insurance and driving that follow
+
+Both resolve to a named individual with a mobile number in one further request.
+
+### 1A.3 Parameter order corrected
+
+The Phase 1 write-up used `{prno}/{billno}/{cbillno}`. Testing established the working order is:
+
+```
+/{regno}/{OldBillNo}/{BillNo}
+```
+
+The cancellation bill number goes last. Supplying them the other way round returns zero records — which is why several earlier probes came back empty.
+
+### 1A.4 Scale
+
+| Metric | Value |
+|---|---|
+| Records in `Cancel/Approval/List` | 101 |
+| Records dated 2026 | 38 |
+| **Distinct patients (Prno) in 2026 alone** | **34** |
+| Date range covered | 30-SEP-2024 → 01-OCT-2026 |
+
+This is the **cancellation queue only** — a subset of investigations. It is not the full investigation history.
+
+### 1A.5 ✅ Clean negative — no credentials in the employee response
+
+`api/User/Info/{id}` includes `Password`, `OTP` and `OTPMessage` in its response schema. These were checked across four employee records (`3334024`, `45605236`, `45604917`, `45604916`):
+
+| Field | Result |
+|---|---|
+| `Password` | **EMPTY in 4/4 records** |
+| `OTP` | **EMPTY in 4/4 records** |
+| `OTPMessage` | **EMPTY in 4/4 records** |
+
+**No credential material is exposed by this endpoint.** This is recorded as a verified negative and should be acknowledged as a positive finding about the implementation: the fields exist in the data model but were correctly excluded from serialisation.
+
+The same check on the patient side found `AadharNo` empty in all laboratory records tested (see WEB-2026-015).
+
+---
+
 ## 2. Technical Evidence & Live Proof of Concept
 
 ### 2.1 Attack Chain A — Unauthenticated Hospital Staff PII & Photo Dump
