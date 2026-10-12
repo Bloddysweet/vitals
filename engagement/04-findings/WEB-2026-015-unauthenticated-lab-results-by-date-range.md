@@ -32,7 +32,31 @@
 >
 > **Severity revised 9.1 → 7.5.** The finding remains genuine and materially serious — unauthenticated disclosure of named patients with mobile numbers — but it is not the Aadhaar-plus-results breach originally described, and the confirmed volume is small (7 records across a 284-day range).
 >
-> **Open question:** 23 sibling `LabReport` endpoints accept a `{RegNo}` directly and were not tested with a valid registration number. They may return fully-populated records including `TestValue` and `AadharNo`. **This must be tested before the exposure is characterised as small — see §7.**
+> ### ✅ RESOLVED 2026-10-12 — test-level detail confirmed
+
+Supplying a **real registration number** to `api/LabReport/getPatient_All_LabReport/{FromDate}/{ToDate}/{RegNo}/{TestCode}/{BillNo}` returned **18 fully-populated laboratory test records** for a single named patient:
+
+| Field | Sample values |
+|---|---|
+| `PatientName` | `[22 chars]` |
+| `RegNo` | `20260133958` |
+| `Age` | `46 Y / M` |
+| `MobileNumber` | `[10 digits]` |
+| **`TestDescription`** | **`GRAMS STAIN`** · **`RT-PCR for COVID-19`** · **`C.REACTIVE PROTEIN {QUANITATIVE}`** |
+| `TestCode` | `KMSM020` · `NHRTPCR1` · `NBIOCR` |
+| `BillNumber` | `5207639827` · `5207650890` · `5207647018` |
+| `Billdate` | `20-JAN-2026` · `25-JAN-2026` · `23-JAN-2026` |
+| `Status` / `Confirmstatus` | `R`/`Y` · `E`/`N` · `R`/`Y` |
+
+**The finding is therefore larger than "7 patients with names and mobiles."** With a valid registration number, the endpoint returns a patient's **laboratory test history** — which investigations were ordered and when.
+
+`TestValue` remained empty in these records, so **test result values are still not confirmed exposed**. That is now the single open question (§7).
+
+**Why test names alone are sensitive.** The names of investigations a person has undergone disclose health information independently of any result: a COVID-19 PCR, an inflammatory marker, a microbiology stain or an oncology marker each carry meaning on their own. `Status` (`R` = reported, `E` = in progress) and `Confirmstatus` further reveal whether a result exists and has been signed off.
+
+`api/LabReport/getPatientLabReportData/{FromDate}/{ToDate}/{RegNo}/{TestCode}` independently confirmed the same patient and the `RT-PCR for COVID-19` test, corroborating the above.
+
+**Severity remains High (7.5).** The CVSS confidentiality metric was already `C:H` on the basis of confirmed identity exposure; the test-history confirmation reinforces that rating rather than raising it. It would rise only if `TestValue` or `AadharNo` were shown to be populated.
 >
 > **Lesson recorded:** field *names* are not evidence of data exposure. Population must be verified before severity is assigned.
 | **CWE** | CWE-306 (Missing Authentication for Critical Function), CWE-359 (Exposure of Private Personal Information), CWE-639 (Authorization Bypass Through User-Controlled Key) |
