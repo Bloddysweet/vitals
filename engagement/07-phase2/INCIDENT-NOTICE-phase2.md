@@ -1,3 +1,51 @@
+# 🔴 UPDATE 12 October 2026 — MOST URGENT ITEM, READ THIS FIRST
+
+**We have now confirmed that the actual results of patients' laboratory tests can be downloaded by anyone, with no login, in three web requests.**
+
+We previously told you the test results were *not* exposed, because the field that would hold them appeared empty. That was wrong. The results are not in that field — they are inside the **report document itself**, which the system will hand over once the right parameters are supplied.
+
+This is what an unauthenticated request returns. We have redacted the number, but it was a real result for a real patient:
+
+```
+CLINICAL MICROBIOLOGY REPORT
+──────────────────────────────────────────────────────
+   INVESTIGATION            RESULT        NORMAL RANGE
+──────────────────────────────────────────────────────
+C.R.P.(Quantitative)        [REDACTED]    < 5 mg/L
+──────────────────────────────────────────────────────
+```
+
+The value was around **25 times the upper limit of the normal range** — a seriously abnormal result. We also retrieved a second report containing a written pathology finding:
+
+```
+CLINICAL MICROBIOLOGY REPORT — SPUTUM FOR GRAM STAIN
+REPORT: Gram stained smear shows few pus cells and epithelial cells, …
+```
+
+Each record also carries the patient's **name, registration number, mobile number and age**, the report date, the department, and the staff ID of whoever signed the report off.
+
+## How it is done — three requests, no login
+
+```
+1.  getPatientData/{date}/{date}
+       → returns patient registration numbers and bill numbers
+2.  getPatient_All_LabReport/{date}/{date}/{regno}/{testcode}/{billno}
+       → returns the tests that patient had, with test codes and template numbers
+3.  getPatient_All_LabReport_TestDetails/{regno}/{testcode}/{billno}/{template}
+       → returns THE REPORT, WITH THE RESULT IN IT
+```
+
+There is no rate limiting and no logging on any of these. A person could work through your laboratory records systematically and you would have no way of knowing.
+
+## What we would do in the next hour
+
+1. **Block or authenticate every path beginning `/NnoteApi/api/LabReport/`.** There are 24 of them. This is the single highest-value change you can make today.
+2. **Then** deal with the write-access issue (item 4 in the list below), which is the other Critical.
+
+We are sorry we got this wrong in the earlier version of this notice, in both directions. We would rather correct ourselves than leave you working from something inaccurate.
+
+---
+
 # ⚠️ CORRECTION NOTICE — PLEASE READ BEFORE ACTING (updated 12 October 2026)
 
 **Three of the four items in the original version of this notice were overstated. The corrections below are important. I apologise for the error.**
@@ -10,7 +58,7 @@ The original notice was written from the **list of field names** returned by eac
 |---|---|---|
 | **1. Patient master dataset** | 2,708 patients with Aadhaar, bed locations, photographs, PINs | ❌ **Not patient data.** It is a **treatment-package and pricing catalogue**. Every patient field is empty in all 2,708 records. **No Aadhaar, no bed locations, no photographs, no PINs.** |
 | **2. Prescriptions** | 39 patient prescriptions with Aadhaar and clinical complaints | ❌ **Not patient data.** It is a **lookup table of 39 prescription types**. Only two fields are populated. **No Aadhaar, no patient names, no complaints.** |
-| **3. Laboratory results** | Aadhaar numbers and test results | ⚠️ **Partly right.** **7 real patients — name, registration number and mobile number.** But **no Aadhaar** and **no test result values**. |
+| **3. Laboratory results** | Aadhaar numbers and test results | ⚠️ **Partly right, then confirmed worse.** **No Aadhaar** — that part was wrong and stays withdrawn. But **the test results ARE exposed** — see the urgent update at the very top. |
 | **4. Write endpoints** | System accepts changes from anyone | ✅ **Unchanged and confirmed.** This remains the most serious issue. |
 
 ## The single most important correction
@@ -21,14 +69,19 @@ The original notice was written from the **list of field names** returned by eac
 
 ## What is still true, and still needs action today
 
-1. **The write endpoints do not check who is asking.** This was confirmed by database error messages, not by field names, and it is unaffected by the correction. Someone with no login can reach the part of the system that saves patient vital signs and prescriptions. **This remains the priority.**
-2. **Real patient names and mobile numbers are exposed** by the laboratory endpoint (7 patients) and the health-worker endpoint (17 patients, with admission dates and billing).
-3. **Staff data is exposed** — directory and duty roster, with shift times and locations.
-4. **All 205 endpoints lack authentication.** One change fixes all of it.
+1. **Patients' laboratory results can be downloaded by anyone.** Confirmed this afternoon — see the urgent update at the top of this notice. **This is now the priority.**
+2. **The write endpoints do not check who is asking.** Confirmed by database error messages, not by field names, and unaffected by any correction. Someone with no login can reach the part of the system that saves patient vital signs and prescriptions.
+3. **Real patient names and mobile numbers are exposed** by the laboratory endpoint and the health-worker endpoint (17 patients, with admission dates and billing).
+4. **Staff data is exposed** — directory and duty roster, with shift times and locations.
+5. **All 205 endpoints lack authentication.** One change fixes all of it.
 
 ## Further testing still needed
 
-The endpoints that return *real* patient data are the ones that take a **patient registration number** directly. Several of those have not yet been tested with a valid number, and they may return fully-populated records including Aadhaar and test results. **I do not yet know, and neither do we.** I would rather tell you that than guess again in either direction.
+This section is now largely resolved. Testing with real registration numbers confirmed that **laboratory result values are retrievable** (see the update at the top).
+
+**One question remains open.** We have not established whether the *other* 20 `LabReport` endpoints return the same report content, and we have not attempted to enumerate patients systematically — both would mean pulling large volumes of real patient data, which we will not do on a live system without your approval and a maintenance window.
+
+If you want that question answered properly, the right way is either a **staging environment** or a **supervised window on production with a test record**. We are happy to do either with your team present.
 
 ---
 
@@ -46,7 +99,7 @@ The endpoints that return *real* patient data are the ones that take a **patient
 
 ## The headline, in one sentence
 
-Someone on the internet, with no username and no password, can read real patient records and staff records — and can reach the part of the system that writes to your database.
+Someone on the internet, with no username and no password, can download your patients' laboratory test results in three web requests — and can reach the part of the system that writes to your database.
 
 ---
 
@@ -75,7 +128,11 @@ Two endpoints we flagged earlier turned out, on closer inspection, to contain **
 
 We are including these because they still should not be public, and because the empty columns tell an attacker what kind of information you hold. They are not data breaches.
 
-### 3. Staff data — directory and duty roster (High)
+### 3. Laboratory results — actual test values (Critical) — **see the urgent update at the top**
+
+Covered in detail above. Summary: three unauthenticated requests return a named patient's laboratory report, including the measured result and the reference range, plus narrative pathology findings.
+
+### 4. Staff data — directory and duty roster (High)
 
 Two endpoints expose staff information with no login:
 
@@ -86,7 +143,7 @@ The roster is the one we would draw your attention to. It does not just say who 
 
 *(Staff data field-population is verified for the roster; the directory figures are from the same verification pass.)*
 
-### 4. The system will accept changes from anyone (Critical)
+### 5. The system will accept changes from anyone (Critical)
 
 This is the one we most want you to act on today.
 
@@ -138,21 +195,22 @@ Every test was a single, read-only web request, or a deliberately malformed requ
 
 ### In the next few hours
 
-1. **Turn on request logging** for `/NnoteApi/` and `/NtraktApi/`. Keep whatever logs already exist.
-2. **Block all POST, PUT and DELETE requests at your firewall or reverse proxy** for both API paths, while allowing GET. This is a ten-minute change and it stops the most serious issue immediately. Your portals use GET for reading, so this should not break anything users do.
-3. **Take `SaveVitalData` and `savepatientprescription` offline entirely** — these are the two where a false entry could harm a patient.
+1. **Block or authenticate every path beginning `/NnoteApi/api/LabReport/`.** There are 24 of them. This stops patients' test results being downloadable, and it is a single rule.
+2. **Turn on request logging** for `/NnoteApi/` and `/NtraktApi/`. Keep whatever logs already exist — do this *before* making other changes, so there is a record of what has happened up to now.
+3. **Block all POST, PUT and DELETE requests at your firewall or reverse proxy** for both API paths, while allowing GET. This is a ten-minute change and it stops the most serious issue immediately. Your portals use GET for reading, so this should not break anything users do.
+4. **Take `SaveVitalData` and `savepatientprescription` offline entirely** — these are the two where a false entry could harm a patient.
 
 ### In the next few days
 
-4. **Add a single login requirement across both APIs.** One change in `WebApiConfig.cs` covers all 205 endpoints at once. Then open up only the few that genuinely must be public.
-5. **Remove the public API documentation pages** at `/NtraktApi/help` and `/NnoteApi/help`. These publish a complete list of all 205 endpoints, including every write endpoint, to anyone who asks.
-6. **Stop returning whole database records.** One of your endpoints returns 79 columns of which 71 are empty. Sending only the fields a caller actually needs removes most of this report's findings in one change.
+5. **Add a single login requirement across both APIs.** One change in `WebApiConfig.cs` covers all 205 endpoints at once. Then open up only the few that genuinely must be public.
+6. **Remove the public API documentation pages** at `/NtraktApi/help` and `/NnoteApi/help`. These publish a complete list of all 205 endpoints, including every write endpoint, to anyone who asks.
+7. **Stop returning whole database records.** One of your endpoints returns 79 columns of which 71 are empty. Sending only the fields a caller actually needs removes most of this report's findings in one change.
 
 ### In the next few weeks
 
-7. **Add permission checks, not just login checks.** Knowing who someone is, is not the same as knowing what they are allowed to do. A receptionist should not be able to approve a payment.
-8. **Add an audit trail** for anything that touches patient records — who, when, and what changed from what.
-9. **Take independent legal advice** on whether any of this needs to be reported. Our earlier suggestion that it might was based on the Aadhaar error, now corrected, and we do not want to influence that judgement either way.
+8. **Add permission checks, not just login checks.** Knowing who someone is, is not the same as knowing what they are allowed to do. A receptionist should not be able to approve a payment.
+9. **Add an audit trail** for anything that touches patient records — who, when, and what changed from what.
+10. **Take independent legal advice** on whether this needs to be reported. Earlier we suggested it might, based on an Aadhaar error which we have since corrected. We have now, however, confirmed exposure of **actual clinical test results**, which is a different and more serious category. We are not lawyers and will not advise you either way — but we would not want you to decide this without counsel.
 
 ---
 
@@ -161,7 +219,7 @@ Every test was a single, read-only web request, or a deliberately malformed requ
 | Document | Contents |
 |---|---|
 | **`WEB-2026-018`** | **Unauthenticated write endpoints — full technical detail, including the Oracle evidence (CVSS 9.8). Most urgent.** |
-| `WEB-2026-015` | Laboratory patient records — 7 patients, names and mobile numbers *(corrected)* |
+| **`WEB-2026-015`** | **Laboratory results — confirmed retrieval of actual test values and pathology findings. Most urgent.** |
 | `WEB-2026-017` | Patient admission and billing list — 17 patients, fully populated |
 | `WEB-2026-016` / `020` | Staff directory and duty roster |
 | `WEB-2026-014` | Prescription-type lookup table *(corrected — no patient data)* |
