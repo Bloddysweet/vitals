@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | **Finding ID** | WEB-2026-015 |
-| **Severity** | **HIGH** *(revised from Critical — see correction below)* |
-| **CVSS v3.1 Score** | **7.5** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N`) |
+| **Severity** | **CRITICAL** *(downgraded to High on 2026-10-12, then **restored to Critical** the same day — see correction history below)* |
+| **CVSS v3.1 Score** | **9.1** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N`) |
 
 > # ⚠️ PARTIAL CORRECTION — 2026-10-12
 >
@@ -30,9 +30,62 @@
 > - ❌ **No laboratory result values.** `TestValue` is null in all records.
 > - ✅ **Real patient identities ARE exposed** — name, registration number and mobile number for 7 patients, retrievable by caller-supplied date range with no authentication.
 >
-> **Severity revised 9.1 → 7.5.** The finding remains genuine and materially serious — unauthenticated disclosure of named patients with mobile numbers — but it is not the Aadhaar-plus-results breach originally described, and the confirmed volume is small (7 records across a 284-day range).
+> **Severity revised 9.1 → 7.5, then restored to 9.1 later the same day** once result values were confirmed. The Aadhaar claim remains withdrawn — no Aadhaar number was exposed.
 >
-> ### ✅ RESOLVED 2026-10-12 — test-level detail confirmed
+> ### 🔴 FINAL RESOLUTION 2026-10-12 — ACTUAL LABORATORY RESULT VALUES CONFIRMED
+
+**The open question is closed. `TestValue` results ARE retrievable.**
+
+The result values are not in the `TestValue` field — they are embedded in **`TestDescription`**, which contains the **rendered HTML of the actual laboratory report**. Reaching them requires the correct `TemplateNo` path parameter, which is supplied by the `Template` field returned in the test listing.
+
+**Verified live — `getPatient_All_LabReport_TestDetails/{RegNo}/{TestCode}/{BillNo}/{TemplateNo}`:**
+
+```
+CLINICAL MICROBIOLOGY REPORT
+──────────────────────────────────────────────────────────
+   INVESTIGATION              RESULT          NORMAL RANGE
+──────────────────────────────────────────────────────────
+C.R.P.(Quantitative)          [REDACTED]      < 5 mg/L
+──────────────────────────────────────────────────────────
+```
+
+The result was a **numeric value approximately 25× the upper limit of the reference range** — that is, a grossly abnormal, clinically significant result indicating severe inflammation or infection. The precise value was observed during verification and is **deliberately not reproduced here**, because this repository is public and the value constitutes identifiable patient health data.
+
+**A second report, retrieved the same way, contained a narrative microbiology result:**
+
+```
+CLINICAL MICROBIOLOGY REPORT — SPUTUM FOR GRAM STAIN
+REPORT: Gram stained smear shows few pus cells and epithelial cells, …
+```
+
+That is a free-text pathological finding, not a coded value.
+
+**What this establishes.** An unauthenticated caller can retrieve, for a named patient with a known mobile number:
+
+- The **actual measured result** of a laboratory investigation
+- The **reference range**, and therefore whether the result is abnormal
+- **Narrative pathology findings** in the clinician's own words
+- The **report date**, department and the **staff ID that confirmed** the report
+
+This is no longer a metadata exposure. **It is unauthenticated access to the content of patients' laboratory reports.**
+
+**Access path (all steps unauthenticated):**
+
+```
+1.  getPatientData/{from}/{to}                  → RegNo + BillNumber
+2.  getPatient_All_LabReport/{from}/{to}/{RegNo}/{TestCode}/{BillNo}
+                                                → TestCode + Template
+3.  getPatient_All_LabReport_TestDetails/{RegNo}/{TestCode}/{BillNo}/{Template}
+                                                → THE REPORT, WITH RESULTS
+```
+
+Three requests. No credentials. No rate limiting. No logging.
+
+**Severity restored to CRITICAL (9.1).** `C:H` on confirmed clinical results; `I:H` by virtue of WEB-2026-018, which established that the same unauthenticated surface executes database writes.
+
+---
+
+### ✅ RESOLVED 2026-10-12 — test-level detail confirmed
 
 Supplying a **real registration number** to `api/LabReport/getPatient_All_LabReport/{FromDate}/{ToDate}/{RegNo}/{TestCode}/{BillNo}` returned **18 fully-populated laboratory test records** for a single named patient:
 
@@ -56,7 +109,7 @@ Supplying a **real registration number** to `api/LabReport/getPatient_All_LabRep
 
 `api/LabReport/getPatientLabReportData/{FromDate}/{ToDate}/{RegNo}/{TestCode}` independently confirmed the same patient and the `RT-PCR for COVID-19` test, corroborating the above.
 
-**Severity remains High (7.5).** The CVSS confidentiality metric was already `C:H` on the basis of confirmed identity exposure; the test-history confirmation reinforces that rating rather than raising it. It would rise only if `TestValue` or `AadharNo` were shown to be populated.
+**Severity: see the FINAL RESOLUTION block above — result values were subsequently confirmed, restoring this finding to Critical.**
 >
 > **Lesson recorded:** field *names* are not evidence of data exposure. Population must be verified before severity is assigned.
 | **CWE** | CWE-306 (Missing Authentication for Critical Function), CWE-359 (Exposure of Private Personal Information), CWE-639 (Authorization Bypass Through User-Controlled Key) |
